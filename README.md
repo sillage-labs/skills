@@ -1,5 +1,7 @@
 # Sillage Skills
 
+[![skills.sh](https://skills.sh/b/getsillage/sillage-skills)](https://skills.sh/getsillage/sillage-skills)
+
 > Install Sillage Skills and run your entire go-to-market motion — targeting, agents, signals, content — from a natural-language conversation with Claude, Cursor, or any MCP-capable assistant.
 
 Without skills, an assistant connected to the [Sillage MCP](https://api.getsillage.com/api/mcp/v2) knows _which_ tools exist but has to guess _how_ to use them well: how to turn a vague "we sell to sales teams" into a precise persona, which keywords actually catch buying intent, what to track. With Sillage Skills installed, it already knows. You just describe what you want.
