@@ -1,6 +1,6 @@
 # Sillage Skills
 
-[![skills.sh](https://skills.sh/b/getsillage/sillage-skills)](https://skills.sh/getsillage/sillage-skills)
+[![skills.sh](https://skills.sh/b/espaidon/sillage-skills)](https://skills.sh/espaidon/sillage-skills)
 
 > Install Sillage Skills and run your entire go-to-market motion — targeting, agents, signals, content — from a natural-language conversation with Claude, Cursor, or any MCP-capable assistant.
 
@@ -30,7 +30,7 @@ Any MCP-compatible client works — point it at the URL above and complete the S
 ## 2. Install the skills
 
 ```bash
-npx skills add getsillage/sillage-skills
+npx skills add espaidon/sillage-skills
 ```
 
 This drops a `.skills/` directory into your project that your assistant reads automatically. Commit it so every teammate and CI environment shares the same setup with no separate install step.
