@@ -1,5 +1,5 @@
 ---
-name: manage-workspace
+name: sillage-manage-workspace
 description: >
   Stands up a new Sillage workspace and safely edits an existing one through the MCP — the write and
   edit engine behind targeting. Runs the setup loop (persona → target accounts → coverage →
@@ -13,14 +13,14 @@ metadata:
   version: 1.1.0
   model-tier: sonnet
   provider: Sillage MCP v2 (https://api.getsillage.com/api/mcp/v2)
-  pairs-with: [grill-me, how-sillage-works]
+  pairs-with: [sillage-onboarding, sillage-help]
 ---
 
 # Manage Workspace — set up and edit a Sillage workspace through the MCP
 
-This is the **hands that write**. `grill-me` decides _what_ the targeting should be (interview +
+This is the **hands that write**. `sillage-onboarding` decides _what_ the targeting should be (interview +
 expansion); this skill puts it into the workspace and changes it later without breaking it. If the
-model of the product is unclear, read `how-sillage-works` first — this skill assumes you know what a
+model of the product is unclear, read `sillage-help` first — this skill assumes you know what a
 persona, a target account, coverage, a watchlist, and a signal run are.
 
 There are two jobs, one skill: **set up** a fresh workspace, and **edit** a live one. Editing is the
@@ -36,11 +36,11 @@ workspace** (via `sk_live_` or OAuth) — the MCP can't create a workspace, only
 
 ## When NOT to use
 
-- You haven't decided the targeting yet → run `grill-me` first to shape a sharp persona and agents,
+- You haven't decided the targeting yet → run `sillage-onboarding` first to shape a sharp persona and agents,
   then come here to write them.
 - You just want to read results ("show me this week's content", "list my leads") → call the read tool
   directly; don't run a setup loop.
-- You want to understand the product, not change it → `how-sillage-works`.
+- You want to understand the product, not change it → `sillage-help`.
 
 ## Non-negotiables (read before any write)
 

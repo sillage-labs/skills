@@ -8,7 +8,7 @@ Without skills, an assistant connected to the [Sillage MCP](https://api.getsilla
 
 ```
 "Set up my Sillage workspace."
-  → grill-me interviews you about what you sell, who buys, and the signals that matter
+  → sillage-onboarding interviews you about what you sell, who buys, and the signals that matter
   → expands your answers into a precise persona + high-signal agents
   → writes them through the Sillage MCP — no app, no forms
 ```
@@ -53,9 +53,9 @@ It will list the skills below and what each one does.
 
 | Skill                                             | What it does                                                                                                                                                                                                                                                                                             |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`grill-me`](./skills/grill-me)                   | Interviews you to extract and **expand** your go-to-market context — what you sell, who buys, the buying signals that matter — then writes a precise persona and proposes high-signal agents through the MCP. The piece the tools can't do for you: turning sparse human answers into sharp targeting.   |
-| [`manage-workspace`](./skills/manage-workspace)   | The write and edit engine. Stands up a new workspace and **safely edits a live one** — the setup loop (persona → accounts → coverage → agents → runs) and the edit loop (read → diff → patch), respecting the write rules (persona replaces whole, the target list only appends) that keep changes safe. |
-| [`how-sillage-works`](./skills/how-sillage-works) | The HELP skill. Explains the **whole logic** of a workspace and the **glossary** behind it — how persona, target accounts, coverage, watchlists, agents, signal runs, detections and content connect, and what every term means. The mental model the other skills assume you already have.              |
+| [`sillage-onboarding`](./skills/sillage-onboarding)                   | Interviews you to extract and **expand** your go-to-market context — what you sell, who buys, the buying signals that matter — then writes a precise persona and proposes high-signal agents through the MCP. The piece the tools can't do for you: turning sparse human answers into sharp targeting.   |
+| [`sillage-manage-workspace`](./skills/sillage-manage-workspace)   | The write and edit engine. Stands up a new workspace and **safely edits a live one** — the setup loop (persona → accounts → coverage → agents → runs) and the edit loop (read → diff → patch), respecting the write rules (persona replaces whole, the target list only appends) that keep changes safe. |
+| [`sillage-help`](./skills/sillage-help) | The HELP skill. Explains the **whole logic** of a workspace and the **glossary** behind it — how persona, target accounts, coverage, watchlists, agents, signal runs, detections and content connect, and what every term means. The mental model the other skills assume you already have.              |
 
 _More skills land here over time. Each one teaches the assistant a workflow the raw tools assume you already know._
 
@@ -69,7 +69,7 @@ Any tool that follows the [skills.sh](https://skills.sh) standard works with the
 
 ## Contributing
 
-These skills are open. Found a sharper question to ask, a better keyword-expansion pattern, a missing signal type? Open an issue or a PR. The skills are plain Markdown — read [`skills/grill-me/SKILL.md`](./skills/grill-me/SKILL.md) to see the shape.
+These skills are open. Found a sharper question to ask, a better keyword-expansion pattern, a missing signal type? Open an issue or a PR. The skills are plain Markdown — read [`skills/sillage-onboarding/SKILL.md`](./skills/sillage-onboarding/SKILL.md) to see the shape.
 
 ## License
 

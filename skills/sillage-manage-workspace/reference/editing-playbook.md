@@ -50,7 +50,7 @@ competitor's LinkedIn URL. To also get the people at that competitor, `enrich_co
 
 **Tune keywords.** `get_agents(agent_id, detailed)` to see the current set → `configure_agent` with the
 new `tracking_keywords`. Quote generic phrases to cut noise, leave niche terms bare (the quoting rule
-is in `grill-me`'s `reference/expansion-playbook.md`). Then `launch_signal_run` to test the new set.
+is in `sillage-onboarding`'s `reference/expansion-playbook.md`). Then `launch_signal_run` to test the new set.
 
 **Pause / resume an agent.** `configure_agent(agent_id, enabled: false)` to pause, `true` to resume.
 

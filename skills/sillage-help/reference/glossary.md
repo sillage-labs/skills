@@ -10,7 +10,7 @@ Your **Ideal Customer Profile**: who you sell to, expressed as `job_title`, `exc
 that decides **which people count as qualified leads** and **which companies qualify** — and it's the
 context your generated content is written against, so a thin persona produces generic content. One
 persona per workspace. It is **replaced whole** on every write (PUT), never patched — read it before
-you change it. Exact fields and allowed values live in `grill-me`'s `reference/what-sillage-needs.md`.
+you change it. Exact fields and allowed values live in `sillage-onboarding`'s `reference/what-sillage-needs.md`.
 
 ## Target Account List (TAL) / target accounts
 
