@@ -10,7 +10,7 @@ description: >
   target list", "what does coverage mean", "why only company keywords", "what's a signal", "glossary".
 metadata:
   owner: pf@getsillage.com
-  version: 1.0.0
+  version: 1.1.0
   model-tier: sonnet
   provider: Sillage MCP v2 (https://api.getsillage.com/api/mcp/v2)
   pairs-with: [grill-me, manage-workspace]

@@ -32,7 +32,7 @@ their "about". Mappings are **versioned and historical** — a new one is a new 
 company from the front doesn't erase its past mappings.
 
 - **"No coverage"** — the badge/state meaning no mapping exists for an entity yet, so there are no
-  people to track for it. Watchlist entities added by LinkedIn URL alone have no domain, so they show
+  people to track for it. Adding an entity to a watchlist doesn't build coverage by itself — it shows
   no coverage until a company mapping is triggered. Coverage comes from `enrich_company` on a
   **domain**.
 - Coverage does **not** auto-refresh when you change the persona — re-trigger `enrich_company` to pull
@@ -95,7 +95,9 @@ company, person, and content type. See `signal-taxonomy.md` for the content type
 ## Keys — `sk_live_` vs `mk_live_`
 
 - **`sk_live_`** — a **workspace key**. It scopes the MCP to one workspace: read and edit that
-  workspace's config and results. This is what the public MCP uses. It **cannot create a workspace**.
+  workspace's config and results. This is what the public MCP uses under the hood — an OAuth
+  connection (the default; no key to paste) resolves to the workspace's `sk_live_` key. It **cannot
+  create a workspace**.
 - **`mk_live_`** — a **partner/master key** used by Sillage's own provisioning to create and operate
   workspaces on a customer's behalf. It is not part of the workspace MCP and isn't needed to run or
   edit an existing workspace.

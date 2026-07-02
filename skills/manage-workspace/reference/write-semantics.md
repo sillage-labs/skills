@@ -18,9 +18,9 @@ upsert_persona(next)   # complete object, documented fields only
 ```
 
 Send **only** the documented persona fields (`job_title`, `exclude_job_title`, `seniority`,
-`headcount`, `industry`, `location`, `additional_info`). Don't invent extra keys — unknown fields
-don't help and can cost you the fields you meant to keep. There is one persona per workspace; there's
-no id to target and no "personas" collection.
+`headcount`, `industry`, `location`, `additional_info`). Don't invent extra keys — an unknown field
+(e.g. `name`) has been observed to return 200 and **wipe the persona to empty**. There is one persona
+per workspace; there's no id to target and no "personas" collection.
 
 ## Target account list — append and remove-by-id
 
@@ -32,16 +32,17 @@ no id to target and no "personas" collection.
 - Adding accounts **enqueues ingestion**. Poll `get_top_account_list_status` to `completed` before you
   expect coverage or content for them.
 
-## Watchlist entities — idempotent append, LinkedIn-only
+## Watchlist entities — idempotent append, LinkedIn-first
 
-- `add_watchlist_entities` takes **LinkedIn URL or handle** (up to 100 per call) — there is no domain
-  param here. It is **idempotent on (list, entity)**: entities already present are skipped, so re-runs
-  are safe.
+- `add_watchlist_entities` takes **LinkedIn URL or handle** (preferred), up to 100 per call. On
+  **company** lists only, `domain` is accepted as a fallback when no LinkedIn identifier is known —
+  sending a domain to a profile list returns 422. It is **idempotent on (list, entity)**: entities
+  already present are skipped, so re-runs are safe.
 - A watchlist's `type` is **immutable**; its `kind` (company vs profile) is derived from the type.
   Company lists take companies; profile lists take people.
-- Because entities are keyed by LinkedIn (not domain), a watchlisted company has **no domain**, so it
-  gets **no coverage** on its own. If you need the people at a watchlisted company, run
-  `enrich_company` with that company's **domain** separately.
+- Adding an entity to a watchlist does **not** build coverage for it. If you need the people at a
+  watchlisted company, run `enrich_company` with that company's **domain** separately — entities
+  added by LinkedIn identifier alone show "No coverage" until you do.
 
 ## Coverage — trigger, then poll; doesn't refresh itself
 
@@ -58,10 +59,12 @@ no id to target and no "personas" collection.
 
 ## Signal runs — trigger, then poll
 
-- `launch_signal_run` **enqueues** work and returns a `signal_request_id`. Poll `get_signal_run` to a
+- `launch_signal_run` **enqueues** work and returns `runs[]`, each with its own `signal_request_id`
+  (keyword/job agents → one run; watchlist agents → two). Poll `get_signal_run` per run to a
   terminal stage (`completed`, `completed_partial`, `failed`) before drawing conclusions.
 - Put per-run options **inside `parameters`** (e.g. `{ agent_id, parameters: { lookback_days: 90 } }`),
-  not at the top level.
+  not at the top level — and as the right JSON type (`lookback_days: 90`, not `"90"`; strings are
+  rejected).
 - A run launched immediately after `create_agent` can be rejected while the agent's keywords are still
   being indexed — if a fresh keyword agent's first run errors on input, wait a short moment and launch
   again.

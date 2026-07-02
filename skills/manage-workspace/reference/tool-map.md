@@ -35,7 +35,7 @@ Exact allowed values (seniority enum, headcount ranges) are in `grill-me`'s
 | `get_top_accounts`            | READ            | `limit?`                                 | Superset — every company with any activity trace, **not** the TAL. |
 | `add_top_accounts`            | APPEND, TRIGGER | `accounts:[{domain}\|{linkedin_url}]`    | Prefer `domain`. Enqueues ingestion → poll status.                 |
 | `remove_top_accounts`         | DESTRUCTIVE     | `ids:[int]`                              | Remove by ids read from `read_top_account_list`.                   |
-| `get_top_account_list_status` | READ            | —                                        | Ingestion state: `queued` → `processing` → `completed`.            |
+| `get_top_account_list_status` | READ            | —                                        | Ingestion state: `queued` → `processing` → `completed` \| `failed`. |
 
 ## Coverage / company mapping
 
@@ -56,7 +56,7 @@ Exact allowed values (seniority enum, headcount ranges) are in `grill-me`'s
 | `get_watchlist`           | READ        | `watchlist_id`                                                         |                                                                         |
 | `update_watchlist`        | PUT         | `watchlist_id`, `title?`, `description?`                               | Title/description only; type can't change.                              |
 | `delete_watchlist`        | DESTRUCTIVE | `watchlist_id`                                                         |                                                                         |
-| `add_watchlist_entities`  | APPEND      | `kind`, `watchlist_id`, `entities:[{linkedin_url}\|{linkedin_handle}]` | ≤100 per call. Idempotent on (list, entity). LinkedIn only — no domain. |
+| `add_watchlist_entities`  | APPEND      | `kind`, `watchlist_id`, `entities:[{linkedin_url}\|{linkedin_handle}\|{domain}]` | ≤100 per call. Idempotent on (list, entity). LinkedIn URL/handle preferred; `domain` accepted as a fallback on **company** lists only (422 on profile lists). |
 | `list_watchlist_entities` | READ        | `watchlist_id`                                                         |                                                                         |
 | `remove_watchlist_entity` | DESTRUCTIVE | `watchlist_id`, entity id                                              |                                                                         |
 
@@ -64,7 +64,7 @@ Exact allowed values (seniority enum, headcount ranges) are in `grill-me`'s
 
 | Tool                   | Class       | Key params                                            | Notes                                                                                                                                                                                                                     |
 | ---------------------- | ----------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `create_agent`         | CREATE      | `name`, `type`, `tracking_keywords?`, `watchlist_id?` | Types: `keyword_detection`, `job_update`, `competitor`, `partner`, `customer`, `influencer`, `champion`. Watchlist types auto-create + bind a list unless you pass `watchlist_id` (its type must match). Created enabled. |
+| `create_agent`         | CREATE      | `name`, `type`, `tracking_keywords?`, `watchlist_id?` | Types: `keyword_detection`, `job_update`, `competitor`, `partner`, `customer`, `influencer`, `champion`. `job_update` takes no params at create (name + type only). Watchlist types auto-create + bind a list unless you pass `watchlist_id` (its type must match). Created enabled. |
 | `get_agents`           | READ        | `agent_id?`, `response_format?`                       | List, or one agent detailed. `job_update` params: `job_titles[]`, `seniority_levels[]`.                                                                                                                                   |
 | `configure_agent`      | PUT         | `agent_id`, `tracking_keywords?`, `enabled?`, `name?` | Rename, change keywords, pause/resume. Keywords/enabled only — can't set job titles here.                                                                                                                                 |
 | `bind_agent_watchlist` | PUT         | `agent_id`, `watchlist_id`                            | Link/swap the bound list; both null = unlink.                                                                                                                                                                             |
@@ -74,14 +74,17 @@ Exact allowed values (seniority enum, headcount ranges) are in `grill-me`'s
 
 | Tool                | Class   | Key params                | Notes                                                                                                                                            |
 | ------------------- | ------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `launch_signal_run` | TRIGGER | `agent_id`, `parameters?` | Agent goes and looks. Keyword/job → 1 run; watchlist → 2 (inbound + outbound). Put per-run options like `lookback_days` **inside `parameters`**. |
-| `get_signal_run`    | READ    | `signal_request_id`       | Stage `running` → `completed` / `completed_partial` / `failed`; per-job counts.                                                                  |
-| `list_signals`      | READ    | `page?`, `page_size?`     | The detection feed; paginate with `has_more`.                                                                                                    |
-| `list_signal_types` | READ    | —                         | The detection taxonomy.                                                                                                                          |
+| `launch_signal_run` | TRIGGER     | `agent_id`, `parameters?`                                              | Agent goes and looks. Returns `runs[]`, each with its own `signal_request_id` — keyword/job → 1 run; watchlist → 2 (inbound + outbound). Put per-run options like `lookback_days` **inside `parameters`**, as a **number** (strings are rejected). |
+| `get_signal_run`    | READ        | `signal_request_id`                                                    | Stage `running` → `completed` / `completed_partial` / `failed`; per-job counts.                                                                  |
+| `list_signals`      | READ        | `page?`, `page_size?`                                                  | The detection feed; paginate with `has_more`. No filter params — filter client-side.                                                             |
+| `list_signal_types` | READ        | —                                                                      | The detection taxonomy.                                                                                                                          |
+| `add_signal`        | CREATE      | `signal_type`, `interaction_data`, `workspace_company_document_id`     | Manually insert a detection (e.g. from your own source). Optional: `workspace_lead_document_id`, `agent_document_id`.                            |
+| `update_signal`     | PUT         | signal id + fields                                                     | Modify an existing detection.                                                                                                                    |
+| `delete_signal`     | DESTRUCTIVE | signal id                                                              | Remove a detection; not reversible.                                                                                                              |
 
 ## Content
 
 | Tool                   | Class | Key params                                                                                    | Notes                                                                      |
 | ---------------------- | ----- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `get_contents`         | READ  | `company_domain?[]`, `company_id?`, `author_profile_id?`, `content_type?`, `response_format?` | The corpus. Use `response_format: detailed` to get the full author object. |
-| `get_content_requests` | READ  | `type?`, `company_domain?[]`, `stage?`                                                        | The underlying request/job records with timing.                            |
+| `get_contents`         | READ  | `company_domain?[]`, `company_id?`, `author_profile_id?`, `content_type?`, `response_format?` | The corpus. `response_format`: `concise` \| `normalized` \| `detailed` — only `detailed` carries the full author/actor object. |
+| `get_content_requests` | READ  | `type?`, `company_domain?[]`, `stage?`                                                        | The underlying request/job records with timing. `stage` takes **one** value — comma-joined lists are rejected.                 |
