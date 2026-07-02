@@ -65,6 +65,7 @@ Sillage MCP `create_agent` exposes these types:
 | The customer says…                                 | Agent type          | What it needs                         |
 | -------------------------------------------------- | ------------------- | ------------------------------------- |
 | "When someone posts about \<pain\> / our category" | `keyword_detection` | expanded `tracking_keywords`          |
+| "When a lead/champion changes jobs or is promoted" | `job_update`        | nothing — name only; tracks persona-matched people |
 | "Track our competitors' companies"                 | `competitor`        | a competitor watchlist (auto-created) |
 | "Track our partners"                               | `partner`           | a partner watchlist                   |
 | "Track our existing customers (expansion)"         | `customer`          | a customer watchlist                  |

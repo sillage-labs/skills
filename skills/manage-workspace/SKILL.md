@@ -10,7 +10,7 @@ description: >
   "change my keywords", "pause this agent", "re-run the agents", "fix my workspace", "reconcile my setup".
 metadata:
   owner: pf@getsillage.com
-  version: 1.0.0
+  version: 1.1.0
   model-tier: sonnet
   provider: Sillage MCP v2 (https://api.getsillage.com/api/mcp/v2)
   pairs-with: [grill-me, how-sillage-works]
@@ -71,8 +71,9 @@ persona defines targeting before lists ingest.
    `get_top_account_list_status` to `completed`.
 4. **Coverage** → `enrich_company` per account you want mapped to its people (by domain). Poll via
    `list_company_mappings` / `get_account_mapping_stage`.
-5. **Watchlists** → `create_watchlist` per type, `add_watchlist_entities` (LinkedIn URL/handle,
-   ≤100 per call). Or let a watchlist agent create its list for you.
+5. **Watchlists** → `create_watchlist` per type, `add_watchlist_entities` (LinkedIn URL/handle
+   preferred, domain as fallback on company lists, ≤100 per call). Or let a watchlist agent create
+   its list for you.
 6. **Agents** → `create_agent` per confirmed signal; pass an existing `watchlist_id` to bind a list
    you already populated.
 7. **Run** → `launch_signal_run` per agent, poll `get_signal_run` to a terminal stage, then read

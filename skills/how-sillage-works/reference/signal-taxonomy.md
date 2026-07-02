@@ -58,10 +58,12 @@ Detections are keyed by a signal type. Grouped by what they mean:
 - `linkedinCompanyPost` — a post by a company page.
 - `linkedinComment` — a comment.
 - `linkedinReaction` — a reaction.
-- `jobPosting` — a job opening.
+- `newJob` / `recentlyPromoted` — the career-move records behind `job_update` detections.
+- `jobPosting` / `linkedinJobPosting` — a job opening (generic, or LinkedIn-sourced).
 - `webArticle` — an article found by research.
 - `pressRelease` — a press release.
 - `blogPost` — a blog post.
+- `socialPost` — a post from a non-LinkedIn social source.
 
 ## Detections vs contents — which to read
 
