@@ -51,9 +51,11 @@ It will list the skills below and what each one does.
 
 ## Skills
 
-| Skill                           | What it does                                                                                                                                                                                                                                                                                           |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`grill-me`](./skills/grill-me) | Interviews you to extract and **expand** your go-to-market context — what you sell, who buys, the buying signals that matter — then writes a precise persona and proposes high-signal agents through the MCP. The piece the tools can't do for you: turning sparse human answers into sharp targeting. |
+| Skill                                             | What it does                                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`grill-me`](./skills/grill-me)                   | Interviews you to extract and **expand** your go-to-market context — what you sell, who buys, the buying signals that matter — then writes a precise persona and proposes high-signal agents through the MCP. The piece the tools can't do for you: turning sparse human answers into sharp targeting.   |
+| [`manage-workspace`](./skills/manage-workspace)   | The write and edit engine. Stands up a new workspace and **safely edits a live one** — the setup loop (persona → accounts → coverage → agents → runs) and the edit loop (read → diff → patch), respecting the write rules (persona replaces whole, the target list only appends) that keep changes safe. |
+| [`how-sillage-works`](./skills/how-sillage-works) | The HELP skill. Explains the **whole logic** of a workspace and the **glossary** behind it — how persona, target accounts, coverage, watchlists, agents, signal runs, detections and content connect, and what every term means. The mental model the other skills assume you already have.              |
 
 _More skills land here over time. Each one teaches the assistant a workflow the raw tools assume you already know._
 
