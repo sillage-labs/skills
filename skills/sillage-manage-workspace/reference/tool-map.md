@@ -24,7 +24,7 @@ class. **Write class is the thing to get right:**
 | `get_persona`    | READ          | —                                                                                                                 | Returns the current ICP, or null if none.                      |
 | `upsert_persona` | PUT (replace) | `job_title[]`, `exclude_job_title[]`, `seniority[]`, `headcount[]`, `industry[]`, `location[]`, `additional_info` | Replaces the whole persona. Send only these documented fields. |
 
-Exact allowed values (seniority enum, headcount ranges) are in `grill-me`'s
+Exact allowed values (seniority enum, headcount ranges) are in `sillage-onboarding`'s
 `reference/what-sillage-needs.md` — the single source of truth for persona fields.
 
 ## Target accounts (TAL)

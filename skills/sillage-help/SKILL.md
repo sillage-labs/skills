@@ -1,5 +1,5 @@
 ---
-name: how-sillage-works
+name: sillage-help
 description: >
   Explains the whole logic of a Sillage workspace and the vocabulary behind it — how the persona,
   target accounts, coverage/mapping, watchlists, agents, signal runs, detections and content fit
@@ -13,7 +13,7 @@ metadata:
   version: 1.1.0
   model-tier: sonnet
   provider: Sillage MCP v2 (https://api.getsillage.com/api/mcp/v2)
-  pairs-with: [grill-me, manage-workspace]
+  pairs-with: [sillage-onboarding, sillage-manage-workspace]
 ---
 
 # How Sillage works — the logic and the glossary
@@ -21,7 +21,7 @@ metadata:
 Sillage watches the public web (mostly LinkedIn) for the moments that mean a company or a person is
 about to need what you sell, and turns those moments into leads and ready-to-use content. This skill
 is the map of _how the pieces connect_ and _what each word means_. It doesn't do anything — it makes
-the doing (with `grill-me` and `manage-workspace`) make sense.
+the doing (with `sillage-onboarding` and `sillage-manage-workspace`) make sense.
 
 Read this when the product's model is fuzzy, when a number surprises you, or before you edit a
 workspace and need to know what a change actually moves.
@@ -100,19 +100,19 @@ The full list of the ~25 detection types and the content types is in `reference/
 | `ingestion_complete` | Those accounts finished processing (coverage + content pulled). |
 | `has_contents`       | There is collected content to read.                             |
 
-All four true = the workspace is live. Any false = that's the next thing to fix. `manage-workspace`
+All four true = the workspace is live. Any false = that's the next thing to fix. `sillage-manage-workspace`
 turns this into a loop.
 
 ## When NOT to use
 
-- You want to _do_ something (set up, edit, tune) → this skill only explains; use `grill-me` to shape
-  targeting or `manage-workspace` to write and edit it.
-- You need the exact fields/enums for a persona or agent call → `grill-me`'s
-  `reference/what-sillage-needs.md` and `manage-workspace`'s `reference/tool-map.md` are the precise
+- You want to _do_ something (set up, edit, tune) → this skill only explains; use `sillage-onboarding` to shape
+  targeting or `sillage-manage-workspace` to write and edit it.
+- You need the exact fields/enums for a persona or agent call → `sillage-onboarding`'s
+  `reference/what-sillage-needs.md` and `sillage-manage-workspace`'s `reference/tool-map.md` are the precise
   specs; this skill is the mental model, not the API surface.
 
 ## Where to go next
 
 - **Glossary** — every term, defined: `reference/glossary.md`.
 - **Signal & content taxonomy** — the full detection and content type list: `reference/signal-taxonomy.md`.
-- **To act** — shape inputs with `grill-me`; write and edit with `manage-workspace`.
+- **To act** — shape inputs with `sillage-onboarding`; write and edit with `sillage-manage-workspace`.

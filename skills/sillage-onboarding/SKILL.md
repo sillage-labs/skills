@@ -1,5 +1,5 @@
 ---
-name: grill-me
+name: sillage-onboarding
 description: >
   Interviews a Sillage customer to extract and EXPAND their go-to-market context — what they
   sell, who buys, and the buying signals that matter — then proposes optimized keywords, job
@@ -13,7 +13,7 @@ metadata:
   version: 1.1.0
   model-tier: sonnet
   provider: Sillage MCP v2 (https://api.getsillage.com/api/mcp/v2)
-  pairs-with: [manage-workspace, how-sillage-works]
+  pairs-with: [sillage-manage-workspace, sillage-help]
 ---
 
 # Grill Me — extract and expand a customer's GTM context
