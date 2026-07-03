@@ -25,6 +25,10 @@ claude mcp add --transport http sillage https://api.getsillage.com/api/mcp/v2
 
 Any MCP-compatible client works — point it at the URL above and complete the Sillage login. No API key required. Each connection is scoped to one workspace.
 
+Run that command **in your terminal**, not in the assistant's chat — it configures the client, it isn't a message to the model. Then **restart the client** and complete the Sillage login when prompted (in Claude Code: quit, relaunch, and run `/mcp`). The `sillage_v2_*` tools appear **on demand** after that first login — a fresh session won't list them until you've reconnected.
+
+> **Tools not showing up?** You almost certainly haven't restarted since adding the server, or haven't finished the login. Restart the client, complete the Sillage auth, then ask the assistant to use a Sillage tool — it will discover them.
+
 **Can't install the MCP?** Use [`sillage-api`](./skills/sillage-api) instead — it drives the same workspace over the plain [v2 REST API](https://www.getsillage.com/docs/api) with an `sk_live_` workspace key. Everything the MCP does is reachable over HTTP.
 
 ---

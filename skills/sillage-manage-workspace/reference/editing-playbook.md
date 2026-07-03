@@ -33,6 +33,10 @@ Apply the fix, then re-trigger whatever turns the change into results:
 - Keyword/agent change → `launch_signal_run` and poll `get_signal_run`.
 - Confirm with `get_setup_state` that the readiness flags are where you expect.
 
+> **Don't delete-and-recreate to "refresh."** Every edit below has an in-place tool — use it. Tearing
+> down agents, accounts, or the persona and rebuilding churns ids, orphans auto-spawned watchlists, and
+> re-enqueues ingestion for nothing (detail in `write-semantics.md` → "Edit in place").
+
 ## Recipes for the common edits
 
 **Widen the persona (surface more decision-makers).** `get_persona` → add the new titles/seniority
@@ -42,7 +46,8 @@ who were previously invisible — not adding keywords.
 
 **Add a competitor to track.** Is there a `competitor` watchlist? If not, `create_watchlist(type:
 competitor)` (or let `create_agent(type: competitor)` make one). `add_watchlist_entities` with the
-competitor's LinkedIn URL. To also get the people at that competitor, `enrich_company` its domain.
+competitor's LinkedIn URL (a raw domain can bounce on ambiguous companies). To also get the people at
+that competitor, `enrich_company` its domain.
 
 **Add / remove target accounts.** `add_top_accounts` (by domain) to append; poll
 `get_top_account_list_status`. To drop accounts, read ids from `read_top_account_list` then

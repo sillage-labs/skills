@@ -65,7 +65,8 @@ The single most common confusion (worth internalizing):
 A company can have rich content and **zero mapped people**, or people mapped and **no content**. When
 someone says _"we only get company keywords, never the decision-makers"_, that's this: content is
 flowing but coverage is empty. The fix is coverage (`enrich_company` with the company's **domain**),
-not more keywords. Full definitions in `reference/glossary.md`.
+not more keywords. Full definitions in `reference/glossary.md`. Few or zero signals almost always trace
+back here — `sillage-manage-workspace` has the ordered "Troubleshoot — few or zero signals" checklist.
 
 ## Agents, runs, and what comes out
 
@@ -73,8 +74,12 @@ An **agent** is a saved search of one **type**:
 
 - `keyword_detection` — watches LinkedIn posts for your keywords.
 - `job_update` — watches for people changing jobs / getting promoted.
-- `competitor` / `partner` / `customer` — company **watchlist** agents (monitor a list of companies).
-- `influencer` / `champion` — profile **watchlist** agents (monitor a list of people).
+- `competitor` / `partner` / `customer` — company **watchlist** agents (monitor a list of companies you supply).
+- `influencer` / `champion` — profile **watchlist** agents (monitor a list of people you supply).
+
+A watchlist agent detects interactions with the entities **you put on the list** — it never discovers
+who a company's competitors, partners, or tech vendors are from the corpus. You build the list from
+market knowledge; the agent watches it.
 
 Creating an agent doesn't find anything by itself. You **launch a signal run** — that's the agent
 going out to look. A keyword or job agent produces **one run**; a watchlist agent produces **two**
@@ -88,6 +93,20 @@ What a run produces is read two ways — the same substrate, two lenses:
   filterable by company, person, and type.
 
 The full list of the ~25 detection types and the content types is in `reference/signal-taxonomy.md`.
+
+## When signals come back — lead with the outreach brief
+
+Detections are the means, not the end. The moment a run returns signals, the useful move is to turn
+them into a short **action brief**, not to dive back into config:
+
+1. **Rank accounts by signal density** — a handful will dominate; those are the hot accounts.
+2. **Name the person and the signal that qualifies them** — "Luigi, GM — 12 posts about a new site =
+   active expansion", not just "this account had activity".
+3. **Give a per-account approach angle grounded in that specific signal** — the outreach writes itself
+   from the trigger.
+
+Keep config tuning (lookback, more keywords, more agents) **secondary** — surface the brief first, then
+optimize. Burying the one hot lead under a wall of "you could also add these agents" wastes a good run.
 
 ## Is a workspace even set up? — the four flags
 

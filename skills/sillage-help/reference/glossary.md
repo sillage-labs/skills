@@ -61,6 +61,11 @@ watchlist types above. An agent is created **enabled** and can be paused/renamed
 nothing on its own until you **launch a signal run**. For watchlist types, creating the agent will
 create and bind a matching watchlist for you unless you hand it an existing `watchlist_id`.
 
+These **seven** types are the whole set — there is no `job_posting` or "engagement" agent, and for a
+signal with no agent (hiring, research, CRM) you can't create one. Edit an agent **in place**
+(`configure_agent`, `bind_agent_watchlist`); deleting and recreating mints a new agent id — and, for
+watchlist types, a new auto-spawned watchlist id — orphaning the list you populated.
+
 ## Signal Run
 
 One **execution** of an agent — the agent going out to look. Keyword and job agents produce **one**
@@ -86,6 +91,10 @@ feed. See `signal-taxonomy.md` for every type.
 The raw collected corpus behind detections: LinkedIn posts, company posts, comments, reactions, job
 postings, articles. Same substrate as detections, read through a different lens — filterable by
 company, person, and content type. See `signal-taxonomy.md` for the content types.
+
+Read unfiltered it's a **superset** — largely person-authored posts and content from companies beyond
+your target list — so filter by `company_id` / `company_domain` for a target account's material, and
+expect its share of the whole corpus to be small. Company-page posts often carry an empty body.
 
 ## Setup-state flags
 

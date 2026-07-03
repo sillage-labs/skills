@@ -3,6 +3,23 @@
 Reading is safe. Writing is where a workspace gets damaged. This is the exact behavior of every write
 class and the safe pattern for each.
 
+## Edit in place — never delete-and-recreate
+
+The most damaging habit is tearing something down to "refresh" it. There is almost never a reason to.
+
+- **Agents:** to change keywords, name, or enabled state, use `configure_agent` — **not**
+  `delete_agent` + `create_agent`. Recreating mints a **new agent id**, and for watchlist types it
+  auto-spawns a **new watchlist id**, orphaning the list you populated (real churn seen in the wild:
+  agent `1416 → 2191`, watchlist `17 → 18 → 19`). You lose the agent's continuity for no gain.
+- **Persona:** re-running `upsert_persona` with the same values is a no-op churn — it overwrites the
+  object with itself. To change it, read → merge → PUT once; don't "set it up again."
+- **Target accounts:** removing and re-adding an account is not a "refresh." It re-enqueues list
+  ingestion (which returns `completed` quickly) but is **not** a shortcut to fresher content or
+  coverage — people-mapping is a separate `enrich_company` step that a re-add does not run for you. It
+  churns state for no benefit; enrich or re-run the agent instead.
+
+If a user asks to "delete everything and redo it," push back and offer the in-place edit.
+
 ## Persona — replace-whole (PUT)
 
 `upsert_persona` **overwrites the entire persona** on every call. It is not a patch. Send a partial
@@ -38,6 +55,9 @@ per workspace; there's no id to target and no "personas" collection.
   **company** lists only, `domain` is accepted as a fallback when no LinkedIn identifier is known —
   sending a domain to a profile list returns 422. It is **idempotent on (list, entity)**: entities
   already present are skipped, so re-runs are safe.
+- **Lead with the LinkedIn URL, not the domain.** An ambiguous or un-enrichable domain bounces with a
+  resolution error (seen with `meandu.com`, `zonal.co.uk`, `dojo.tech`) and you end up supplying the
+  URL anyway — so resolve it up front rather than paying a failed round-trip first.
 - A watchlist's `type` is **immutable**; its `kind` (company vs profile) is derived from the type.
   Company lists take companies; profile lists take people.
 - Adding an entity to a watchlist does **not** build coverage for it. If you need the people at a
