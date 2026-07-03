@@ -9,6 +9,8 @@ candidates and a one-line rationale; never silently write what they didn't see.
 - [Job-title expansion](#job-title-expansion)
 - [Keyword expansion for keyword_detection](#keyword-expansion-for-keyword_detection)
 - [Signal → agent mapping](#signal--agent-mapping)
+- [Populating watchlists](#populating-watchlists)
+- [Account curation](#account-curation)
 
 ## Job-title expansion
 
@@ -72,7 +74,43 @@ Sillage MCP `create_agent` exposes these types:
 | "Track these creators our buyers follow"           | `influencer`        | an influencer-profile watchlist       |
 | "Track our champions / advocates"                  | `champion`          | a champion-profile watchlist          |
 
+These seven are the **entire** set — there is no `job_posting`, "employee-engagement", or auto-derived
+agent. If a customer asks for one, say so plainly rather than inventing it.
+
 Pick the **one or two highest-signal** agents to start — usually a `keyword_detection` agent off
 the expanded keywords plus one watchlist agent off their competitors or influencers. More agents
 is not better; signal quality is. Add the rest once the first detections come back and the
 customer trusts the output.
+
+## Populating watchlists
+
+A watchlist agent (`competitor` / `partner` / `customer` / `influencer` / `champion`) is only as good
+as the list you hand it. Critically, **the agent does not discover the list for you** — it detects
+interactions with the entities you supply, nothing more. It will not mine the ingested content to tell
+you who a prospect's partners or tech vendors are.
+
+So populate a watchlist the same way you expand keywords and titles: **propose 8–12 named candidates
+from your own market knowledge, grouped with a one-line rationale, then let the customer cut.** For a
+UK-hospitality payments seller you already know the rivals (Dojo, Zonal, SumUp…) and the ecosystem
+(Deliveroo, OpenTable, Lightspeed…) — offer that list; don't go looking for it in the data.
+
+Two hard rules, both from watching this go wrong:
+
+- **Never regex-mine the corpus to "find" partners or a tech stack.** It's slow, expensive, and the
+  data isn't shaped for it (company-page posts are largely empty). Propose from knowledge instead.
+- **Never infer expected signal yield from content volume.** "This account has 4,000 posts, so the
+  Partner agent will fire 20 times" is fabricated — yield depends on real interactions, not corpus
+  size. Don't promise a number, and never contradict a check you just ran to justify an action.
+
+Resolve entities by **LinkedIn company URL** where you can — a raw domain bounces on ambiguous or
+un-enrichable companies (real snag: `meandu.com`, `zonal.co.uk`, `dojo.tech` all failed to resolve by
+domain and had to be re-added by URL). Confirm the URL up front and skip the round-trip.
+
+## Account curation
+
+A target account only yields signals if it (or its people) are **active on LinkedIn**. Expect a large
+share of any raw target list to be silent — in practice a handful of accounts drive most detections.
+Prefer active, multi-site brands that post regularly over dormant ones. But **don't delete an account
+just because `get_contents` shows zero** — confirm it's genuine inactivity, not a coverage gap that an
+`enrich_company` run would fill (see `sillage-manage-workspace` → "Troubleshoot — few or zero
+signals").

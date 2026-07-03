@@ -103,6 +103,27 @@ The per-axis reconciliation table and the recipes for the common edits (widen th
 competitor, tune keywords, pause an agent, add/remove target accounts) are in
 `reference/editing-playbook.md`.
 
+## Troubleshoot — few or zero signals
+
+A run that completes with nothing (or almost nothing) is usually **not** a lookback problem. Diagnose
+in this order and stop at the first hit:
+
+1. **Coverage.** Are the target account's people actually mapped? `list_company_mappings` /
+   `get_account_mapping_stage`. No mapped people → any people-dependent agent finds nobody. This is
+   the most common cause — fix it with `enrich_company` (by domain), not with more keywords.
+2. **Agent scope.** Keywords too narrow or over-quoted, watchlist empty, or the wrong agent type for
+   the signal. Widen or re-mix the keywords; confirm the watchlist actually has entities.
+3. **Did the run finish?** `get_signal_run` must be at a terminal stage (`completed` /
+   `completed_partial`), and results come from `list_signals`, not the run counters.
+4. **Account is simply quiet.** Some accounts barely post — check with `get_contents` filtered to the
+   company. A genuinely inactive account won't produce signals; that's the account, not the setup.
+5. **Only then, lookback.** A longer `lookback_days` is rarely the real fix — reach for it last.
+
+**`ingestion_complete: true` is workspace-level, not a per-account "all scraped" green light.** The
+flag says the list finished processing; a given account can still have zero content and zero mapped
+people. Don't read one boolean as "everything's ready for every account" — check coverage per account
+(step 1).
+
 ## Close with a summary
 
 After a setup or an edit, report plainly what changed and what's now running:
