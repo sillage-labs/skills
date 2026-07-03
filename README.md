@@ -25,6 +25,8 @@ claude mcp add --transport http sillage https://api.getsillage.com/api/mcp/v2
 
 Any MCP-compatible client works — point it at the URL above and complete the Sillage login. No API key required. Each connection is scoped to one workspace.
 
+**Can't install the MCP?** Use [`sillage-api`](./skills/sillage-api) instead — it drives the same workspace over the plain [v2 REST API](https://www.getsillage.com/docs/api) with an `sk_live_` workspace key. Everything the MCP does is reachable over HTTP.
+
 ---
 
 ## 2. Install the skills
@@ -56,6 +58,7 @@ It will list the skills below and what each one does.
 | [`sillage-onboarding`](./skills/sillage-onboarding)                   | Interviews you to extract and **expand** your go-to-market context — what you sell, who buys, the buying signals that matter — then writes a precise persona and proposes high-signal agents through the MCP. The piece the tools can't do for you: turning sparse human answers into sharp targeting.   |
 | [`sillage-manage-workspace`](./skills/sillage-manage-workspace)   | The write and edit engine. Stands up a new workspace and **safely edits a live one** — the setup loop (persona → accounts → coverage → agents → runs) and the edit loop (read → diff → patch), respecting the write rules (persona replaces whole, the target list only appends) that keep changes safe. |
 | [`sillage-help`](./skills/sillage-help) | The HELP skill. Explains the **whole logic** of a workspace and the **glossary** behind it — how persona, target accounts, coverage, watchlists, agents, signal runs, detections and content connect, and what every term means. The mental model the other skills assume you already have.              |
+| [`sillage-api`](./skills/sillage-api) | The **MCP-less fallback**. When a client can't install the MCP, this teaches the assistant to drive the same workspace over the plain **v2 REST API** — authenticate with an `sk_live_` key and call every endpoint (persona, accounts, coverage, watchlists, agents, runs, signals, contents) to run the same setup and edit loops. Transport only: strategy still comes from the skills above. Includes a `sillage_v2_*` MCP-tool → REST-endpoint map so any MCP-written instruction translates 1:1. |
 
 _More skills land here over time. Each one teaches the assistant a workflow the raw tools assume you already know._
 
