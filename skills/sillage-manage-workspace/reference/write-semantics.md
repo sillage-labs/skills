@@ -39,12 +39,13 @@ Send **only** the documented persona fields (`job_title`, `exclude_job_title`, `
 (e.g. `name`) has been observed to return 200 and **wipe the persona to empty**. There is one persona
 per workspace; there's no id to target and no "personas" collection.
 
-## Target account list — append and remove-by-id
+## Target account list — append and remove
 
 - `add_top_accounts` **appends**. Re-adding an account already on the list is harmless; there's no
   "replace the whole list" tool.
-- `remove_top_accounts` is **destructive** — it removes by id. Read the ids from
-  `read_top_account_list` first; don't guess them.
+- `remove_top_accounts` is **destructive** — pass exactly one of `ids` (numeric, read them from
+  `read_top_account_list` first; don't guess) or `identifiers` (domains / LinkedIn URLs, when you
+  don't have the ids).
 - Identify accounts by **`domain`** when you can — it matches more accurately than a LinkedIn URL.
 - Adding accounts **enqueues ingestion**. Poll `get_top_account_list_status` to `completed` before you
   expect coverage or content for them.
@@ -73,18 +74,18 @@ per workspace; there's no id to target and no "personas" collection.
   creating a duplicate.
 - Coverage is **not** rebuilt when the persona changes. After you widen or reshape the persona,
   re-trigger `enrich_company` on the accounts you want re-mapped against the new ICP.
-- **`request_id` ≠ `mapping_id`.** `enrich_company` / `get_account_mapping_stage` work with the
-  request id; to read the actual people you go `list_company_mappings` → get the `mapping_id` →
-  `get_company_mapping`.
+- **Reading the people:** the `request_id` returned by `enrich_company` is accepted directly as
+  `get_company_mapping`'s `mapping_id`. To browse every existing mapping (and their ids), go through
+  `list_company_mappings`.
 
 ## Signal runs — trigger, then poll
 
 - `launch_signal_run` **enqueues** work and returns `runs[]`, each with its own `signal_request_id`
   (keyword/job agents → one run; watchlist agents → two). Poll `get_signal_run` per run to a
   terminal stage (`completed`, `completed_partial`, `failed`) before drawing conclusions.
-- Put per-run options **inside `parameters`** (e.g. `{ agent_id, parameters: { lookback_days: 90 } }`),
-  not at the top level — and as the right JSON type (`lookback_days: 90`, not `"90"`; strings are
-  rejected).
+- `lookback_days` is a **top-level integer** (1–180, default 90): `{ agent_id, lookback_days: 90 }` —
+  and the right JSON type (`90`, not `"90"`; strings are rejected). Only the REST endpoint nests it
+  inside `parameters`.
 - A run launched immediately after `create_agent` can be rejected while the agent's keywords are still
   being indexed — if a fresh keyword agent's first run errors on input, wait a short moment and launch
   again.
@@ -93,8 +94,9 @@ per workspace; there's no id to target and no "personas" collection.
 
 ## Agents — configure vs bind
 
-- `configure_agent` changes **keywords, name, and enabled** (pause = `enabled:false`, resume =
-  `enabled:true`). It does not set job titles.
+- `configure_agent` changes **keywords, `start_date`, name, and enabled** (pause = `enabled:false`,
+  resume = `enabled:true`). Changing any watch parameter requires sending the **full**
+  `tracking_keywords` list — it replaces the existing one.
 - `bind_agent_watchlist` changes **which list** a watchlist agent watches; passing both fields null
   unlinks it.
 

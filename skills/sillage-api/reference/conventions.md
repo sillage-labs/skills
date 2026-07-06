@@ -13,10 +13,7 @@ on `/api/v1`, migrate it to v2: same key, swap the path prefix, and switch conve
 camelCase params like `pageSize` and nanoid document ids; v2 uses snake_case `page_size` and numeric
 SQL ids). Never mix the two.
 
-**The one and only reason to touch v1:** it exposes **leads** (`GET`/`PATCH /api/v1/workspace/leads`),
-which have **no v2 equivalent yet**. Use v1 *only* for leads, and nothing else — for everything else,
-including signals, v2 is canonical (prefer v2 `GET /workspace/signals` over the legacy
-`GET /api/v1/workspace/signals`). Every other section of this skill is v2.
+Every section of this skill is v2 — there is no reason to touch a v1 endpoint.
 
 ## Authentication
 
@@ -88,7 +85,8 @@ was *accepted*, not done. Poll the matching status endpoint to a terminal state 
 
 `completed_partial` on a run means some accounts weren't scanned — the ids are in
 `metadata.failed.dropped_account_ids`; re-run to cover them. For a whole-workspace view of what's
-in flight, `GET /requests-status` (groups: `account_mapping`, `top_account_content`, `signal_requests`).
+in flight, `GET /requests-status` — a flat `requests[]` array, each item typed `account_mapping` /
+`top_account_content` / `signal`.
 
 **Poll politely:** a few-second interval with backoff, not a tight loop. Coverage/ingestion can take
 minutes.

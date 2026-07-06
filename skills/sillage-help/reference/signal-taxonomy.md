@@ -6,20 +6,17 @@ depends on which agent types you run.
 
 ## Which agent produces what — the closed list
 
-You can only ever create **seven** agent types: `keyword_detection`, `job_update`, `competitor`,
-`partner`, `customer`, `influencer`, `champion`. That is the whole set — there is **no** `job_posting`
-agent, no "employee engagement" agent, no auto-derived agent. If a detection group below has no
-createable agent next to it, **nothing you can create produces it today**: don't propose an agent that
-doesn't exist, and don't promise a signal Sillage can't emit.
+You can only ever create **eight** agent types: `keyword_detection`, `job_posting_keyword_detection`,
+`job_update`, `competitor`, `partner`, `customer`, `influencer`, `champion`. That is the whole set —
+there is no "employee engagement" agent, no auto-derived agent. Don't propose an agent that doesn't
+exist, and don't promise a signal Sillage can't emit.
 
-| Detection group          | Produced by                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------- |
-| Keyword                  | `keyword_detection`                                                                               |
-| Career moves             | `job_update`                                                                                      |
-| Watchlist engagement     | the matching watchlist agent (`competitor` / `partner` / `customer` / `influencer` / `champion`)  |
-| Hiring intent            | **no createable agent** today                                                                     |
-| Research (`deepSearch`)  | **no createable agent** today                                                                     |
-| CRM                      | **no createable agent** today                                                                     |
+| Detection group          | Produced by                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------ |
+| Keyword (LinkedIn posts) | `keyword_detection`                                                                              |
+| Keyword (job postings)   | `job_posting_keyword_detection`                                                                  |
+| Career moves             | `job_update`                                                                                     |
+| Watchlist engagement     | the matching watchlist agent (`competitor` / `partner` / `customer` / `influencer` / `champion`) |
 
 ## Detection types, grouped
 
@@ -28,17 +25,13 @@ Detections are keyed by a signal type. Grouped by what they mean:
 **Keyword**
 
 - `keywordDetection` — a LinkedIn post matched one of an agent's tracking keywords.
+- `jobPostingKeywordDetection` — a job posting from a tracked company matched one of a
+  `job_posting_keyword_detection` agent's keywords (title or description).
 
 **Career moves** (from a `job_update` agent)
 
 - `newJob` — a tracked person started a new role.
 - `recentlyPromoted` — a tracked person was promoted.
-
-**Hiring intent**
-
-- `jobPosting` — a company published a job opening.
-- `jobPostingInsight` — an enriched read on a posting.
-- `jobPostingHiringManager` — the hiring manager behind a posting.
 
 **Raw LinkedIn engagement**
 
@@ -55,18 +48,9 @@ Detections are keyed by a signal type. Grouped by what they mean:
 - `leadLikedCompetitorContent` / `leadCommentedCompetitorContent`
 - `leadLikedInfluencerContent` / `leadCommentedInfluencerContent`
 
-**Research**
-
-- `deepSearch` — a buying-intent finding from web research (news, funding, announcements).
-
-**CRM** (present in the taxonomy)
-
-- `hubspotContactDetection`, `salesforceContactDetection` — a match against a connected CRM.
-
-> In practice the keyword agent is the workhorse. Career and watchlist signals depend on the matching
-> agent type being set up and run; hiring, research, and CRM signals have **no createable agent** (see
-> the table at the top). Start with one or two high-signal agents and add types as the first detections
-> come back.
+> In practice the keyword agent is the workhorse. Career, job-posting-keyword, and watchlist signals
+> depend on the matching agent type being set up and run. Start with one or two high-signal agents
+> and add types as the first detections come back.
 
 ## Content types
 
@@ -88,8 +72,8 @@ Detections are keyed by a signal type. Grouped by what they mean:
 
 - Want **"what happened"** (the event feed, by agent / signal type) → detections (`list_signals`).
 - Want **"the material"** (posts/articles for a company or person, by type) → contents
-  (`get_contents`), which also carries the person→company link. Read contents in its **detailed**
-  form when you need the full author object, not just an excerpt.
+  (`get_contents`), which also carries the person→company link. The default `normalized` format is a
+  clean projection (text, author, engagement, mentions); `detailed` is a deprecated alias of it.
 
 > **`get_contents` unfiltered is a superset, not your target accounts.** With no filter it returns the
 > whole workspace corpus — largely person-authored posts (`company_id: null`) and content from

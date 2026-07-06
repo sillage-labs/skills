@@ -17,13 +17,10 @@ Poll politely (a few seconds, backoff). Every write below is safe to retry.
 curl -s "$SILLAGE/persona" "${auth[@]}"      # 200 {data:...|null} = key works; 401 = bad key
 ```
 
-## Derive setup-state (no dedicated endpoint)
+## Check setup-state (one call)
 
 ```bash
-curl -s "$SILLAGE/persona" "${auth[@]}" | jq '.data != null'                    # persona_set
-curl -s "$SILLAGE/top-account-list/count" "${auth[@]}" | jq '.total > 0'         # list_uploaded
-curl -s "$SILLAGE/top-account-list/status" "${auth[@]}" | jq '.state=="completed"' # ingestion_complete
-curl -s "$SILLAGE/contents?page_size=1" "${auth[@]}" | jq '.meta.pagination.total > 0' # has_contents
+curl -s "$SILLAGE/setup-state" "${auth[@]}"   # {persona_set, list_uploaded, ingestion_complete, has_contents}
 ```
 
 ## Setup loop, end to end
@@ -35,7 +32,7 @@ curl -s "$SILLAGE/persona" "${auth[@]}"     # inspect current data, merge locall
 curl -s -X PUT "$SILLAGE/persona" "${auth[@]}" "${json[@]}" -d '{
   "job_title": ["Head of Sales","VP Sales"],
   "exclude_job_title": ["Intern"],
-  "seniority": ["vp","c_level"],
+  "seniority": ["vp","c_suite"],
   "headcount": ["51-200","201-500"],
   "industry": ["Software"],
   "location": ["France"],
