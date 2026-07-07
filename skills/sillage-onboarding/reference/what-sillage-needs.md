@@ -9,27 +9,31 @@ PUT semantics: **every call fully replaces the previous persona.** To preserve f
 with `sillage_v2_get_persona`, then send the complete object. All fields optional; omit one to
 leave it unconstrained.
 
-| Field               | Type     | Notes                                                                                                                                                             |
-| ------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `job_title`         | string[] | Titles to **include**. Send the expanded variant set, not one title.                                                                                              |
-| `exclude_job_title` | string[] | Titles to **exclude** — filters noise from a broad include match.                                                                                                 |
-| `seniority`         | string[] | Allowed values **only**: `owner`, `founder`, `c_suite`, `partner`, `vp`, `head`, `director`, `manager`, `senior`, `entry`, `intern`.                              |
+| Field               | Type     | Notes                                                                                                                                                                                                                                              |
+| ------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `job_title`         | string[] | Titles to **include**. Send the expanded variant set, not one title.                                                                                                                                                                               |
+| `exclude_job_title` | string[] | Titles to **exclude** — filters noise from a broad include match.                                                                                                                                                                                  |
+| `seniority`         | string[] | Allowed values **only**: `owner`, `founder`, `c_suite`, `partner`, `vp`, `head`, `director`, `manager`, `senior`, `entry`, `intern`.                                                                                                               |
 | `headcount`         | string[] | Allowed values **only** (mind the thousands commas): `"1-10"`, `"11-50"`, `"51-200"`, `"201-500"`, `"501-1,000"`, `"1,001-5,000"`, `"5,001-10,000"`, `"10,001+"`. Comma-less variants (`"501-1000"`) or invented buckets (`"5000+"`) are rejected. |
-| `industry`          | string[] | e.g. `"SaaS"`, `"FinTech"`, `"E-commerce"`.                                                                                                                       |
-| `location`          | string[] | Countries or cities, e.g. `"France"`, `"Germany"`, `"Paris"`.                                                                                                     |
-| `additional_info`   | string   | Free-form ICP criteria that don't fit the structured fields — e.g. "B2B only, must already have an in-house SDR team". Put real qualifying logic here, not fluff. |
+| `industry`          | string[] | e.g. `"SaaS"`, `"FinTech"`, `"E-commerce"`.                                                                                                                                                                                                        |
+| `location`          | string[] | Countries or cities, e.g. `"France"`, `"Germany"`, `"Paris"`.                                                                                                                                                                                      |
+| `additional_info`   | string   | Free-form ICP criteria that don't fit the structured fields — e.g. "B2B only, must already have an in-house SDR team". Put real qualifying logic here, not fluff.                                                                                  |
 
 ## Agents — `sillage_v2_create_agent`
 
-Required: `name`, `type`. Type is one of `keyword_detection`, `job_update`, `competitor`,
-`partner`, `customer`, `influencer`, `champion`.
+Required: `name`, `type`. Type is one of `keyword_detection`, `job_posting_keyword_detection`,
+`job_update`, `competitor`, `partner`, `customer`, `influencer`, `champion`.
 
 - **`keyword_detection`** — monitors LinkedIn posts. Requires `tracking_keywords` (string[]).
   Optional: `max_posts_to_scrape` (int), `start_date` (ISO date, ignores older posts). Quoting rule
   for keywords lives in `expansion-playbook.md`.
-- **`job_update`** — watches persona-matched people for job changes and promotions (`newJob`,
-  `recentlyPromoted`). Takes **no parameters at creation** — `name` and `type` only; who it tracks
-  comes from the persona.
+- **`job_posting_keyword_detection`** — monitors the **job postings your tracked companies publish**
+  (title and description) for your keywords. Same parameters as `keyword_detection`: requires
+  `tracking_keywords`, optional `max_posts_to_scrape`, `start_date`. The signal is hiring intent —
+  keywords here should be the roles/stacks a buying company hires for, not the pain language of posts.
+- **`job_update`** — detects job changes and promotions (`newJob`, `recentlyPromoted`) among the
+  workspace's **mapped contacts**. Workspace-wide; takes **no parameters at creation** — `name` and
+  `type` only.
 - **`competitor` / `partner` / `customer`** — company watchlist agents. A watchlist of the matching
   type is implicitly created and bound, unless you pass an existing `watchlist_id` (its type must
   equal the agent type).

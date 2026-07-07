@@ -10,7 +10,7 @@ description: >
   the Sillage API", "curl Sillage", "REST fallback", "sk_live", "set up the workspace over HTTP".
 metadata:
   owner: pf@getsillage.com
-  version: 1.0.0
+  version: 1.1.0
   model-tier: sonnet
   provider: Sillage REST API v2 (https://api.getsillage.com/api/v2)
   pairs-with: [sillage-onboarding, sillage-manage-workspace, sillage-help]
@@ -23,14 +23,14 @@ This is the **fallback transport**. The Sillage skills normally drive the worksp
 editor without MCP support, a locked-down environment, a pure-HTTP/curl script — everything the MCP
 does is also reachable over the plain **v2 REST API**. This skill teaches Claude how.
 
-**This skill is transport only.** The *strategy* — how to expand a vague ICP into a sharp persona,
+**This skill is transport only.** The _strategy_ — how to expand a vague ICP into a sharp persona,
 which keywords catch buying intent, what to track, how to reconcile a live workspace — still lives in:
 
-- `sillage-onboarding` — decide *what* the targeting should be (interview + expansion).
+- `sillage-onboarding` — decide _what_ the targeting should be (interview + expansion).
 - `sillage-manage-workspace` — the setup loop and the edit/write-safety rules, described against MCP tools.
 - `sillage-help` — the mental model and glossary (persona, coverage, watchlist, signal run, detection).
 
-Read those for the *what* and *why*. Come here for the *how* over HTTP. Every rule in
+Read those for the _what_ and _why_. Come here for the _how_ over HTTP. Every rule in
 `sillage-manage-workspace` (persona is replace-whole, the target list appends, coverage doesn't
 refresh itself, confirm-before-write / poll-before-read) holds identically here — only the calls change.
 
@@ -50,15 +50,14 @@ refresh itself, confirm-before-write / poll-before-read) holds identically here 
 ## The five things that trip up every REST caller (read before any call)
 
 1. **Always use v2.** Every call goes to `https://api.getsillage.com/api/v2` with
-   `Authorization: Bearer sk_live_...`. **`/api/v1` is legacy — don't use it** (the sole exception is
-   leads, which has no v2 endpoint; see the catalog). If an existing integration is on v1, migrate it
-   to v2. The workspace is inferred from the key — never in the URL.
+   `Authorization: Bearer sk_live_...`. **`/api/v1` is legacy — don't use it.** If an existing
+   integration is on v1, migrate it to v2. The workspace is inferred from the key — never in the URL.
    `sk_live_` is a direct-client workspace key, generated at
    <https://www.getsillage.com/app/settings/api-keys> and shown only once; `mk_live_` is a partner
    master key. `401` = key missing/invalid/revoked. **If the user has no key yet, walk them through
    getting and setting one** — the step-by-step is in `reference/conventions.md`.
 2. **Writes that enqueue work return `202` — then you poll.** Adding accounts, enriching a company,
-   and launching a run are all asynchronous. The `202` only means *accepted*. Poll the matching status
+   and launching a run are all asynchronous. The `202` only means _accepted_. Poll the matching status
    endpoint to a **terminal** state before you read results. Details and the terminal states are in
    `reference/conventions.md`.
 3. **Integer ids are environment-specific and not portable.** `id`, `company_id`, `agent_id`,
@@ -75,9 +74,9 @@ refresh itself, confirm-before-write / poll-before-read) holds identically here 
 
 ## Setup loop — stand up a workspace over REST
 
-Same order as `sillage-manage-workspace` (persona defines targeting before lists ingest). There is
-**no `get_setup_state` endpoint** — derive the four flags from reads (see recipe in
-`reference/recipes.md`).
+Same order as `sillage-manage-workspace` (persona defines targeting before lists ingest). Start with
+`GET /setup-state` — the REST equivalent of the MCP's `get_setup_state` — to see which of the four
+flags (`persona_set`, `list_uploaded`, `ingestion_complete`, `has_contents`) is still missing.
 
 1. **Persona** — `GET /persona` (null = unset) → merge → `PUT /persona`.
 2. **Target accounts** — `POST /top-account-list/accounts` `{accounts:[{domain}|{linkedin_url}]}` →
@@ -134,11 +133,11 @@ After a setup or edit, report plainly — same shape as the MCP skills:
   divergence), the async/poll model with every terminal state, RFC 9457 errors, rate limits, the
   identifier waterfall.
 - `reference/endpoint-catalog.md` — every v2 endpoint, grouped, with method, path, key params, body,
-  and write-class. Includes the 3 account-mapping endpoints missing from the published OpenAPI spec
-  and the v1-only leads endpoints.
+  and write-class. Includes the account-mapping and company endpoints missing from the published
+  OpenAPI spec.
 - `reference/mcp-to-rest-map.md` — each `sillage_v2_*` MCP tool → its REST endpoint(s), so any
   instruction written against the MCP translates 1:1.
-- `reference/recipes.md` — copy-paste curl for the setup loop, the edit loop, deriving setup-state,
+- `reference/recipes.md` — copy-paste curl for the setup loop, the edit loop, checking setup-state,
   and the common reads.
 
 ## Canonical docs (fetch when in doubt)
@@ -151,4 +150,5 @@ misbehaves, fetch the live source — it's authoritative:
 - **Get an API key:** <https://www.getsillage.com/app/settings/api-keys>
 - **OpenAPI spec (JSON):** <https://api.getsillage.com/api/v1/docs/spec> — note it currently **omits**
   the three account-mapping endpoints (`POST /enrich-company-mapping`, `GET /company-mappings`,
-  `GET /company-mappings/{mapping_id}`), which are live and covered in `reference/endpoint-catalog.md`.
+  `GET /company-mappings/{mapping_id}`) and `GET /companies/{id}`, which are live and covered in
+  `reference/endpoint-catalog.md`.

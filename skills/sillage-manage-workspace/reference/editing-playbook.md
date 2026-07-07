@@ -20,7 +20,7 @@ For each axis, call it **match** (leave it), **mismatch** (fix it), or **missing
 | Axis            | Read with               | Mismatch looks like…                                       | The one fix                                                                               |
 | --------------- | ----------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | Persona         | `get_persona`           | wrong/narrow titles, seniority, industry, geo              | merge into the full object → `upsert_persona`; then re-`enrich_company` affected accounts |
-| Target accounts | `read_top_account_list` | missing target companies, or off-ICP ones present          | `add_top_accounts` (append) / `remove_top_accounts` (by id)                               |
+| Target accounts | `read_top_account_list` | missing target companies, or off-ICP ones present          | `add_top_accounts` (append) / `remove_top_accounts` (by ids or identifiers)               |
 | Coverage        | `list_company_mappings` | target companies with no mapped people                     | `enrich_company` by **domain**, poll to `completed`                                       |
 | Watchlists      | `list_watchlists`       | a needed list absent or empty                              | `create_watchlist` (right type) + `add_watchlist_entities`                                |
 | Agents          | `get_agents`            | needed signal has no agent / agent paused / stale keywords | `create_agent`, or `configure_agent` (keywords/enabled), or `bind_agent_watchlist`        |
@@ -51,7 +51,7 @@ that competitor, `enrich_company` its domain.
 
 **Add / remove target accounts.** `add_top_accounts` (by domain) to append; poll
 `get_top_account_list_status`. To drop accounts, read ids from `read_top_account_list` then
-`remove_top_accounts(ids)`.
+`remove_top_accounts(ids)` — or pass `identifiers` (domains / LinkedIn URLs) when you don't have ids.
 
 **Tune keywords.** `get_agents(agent_id, detailed)` to see the current set → `configure_agent` with the
 new `tracking_keywords`. Quote generic phrases to cut noise, leave niche terms bare (the quoting rule

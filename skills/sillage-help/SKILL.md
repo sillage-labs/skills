@@ -10,7 +10,7 @@ description: >
   target list", "what does coverage mean", "why only company keywords", "what's a signal", "glossary".
 metadata:
   owner: pf@getsillage.com
-  version: 1.1.0
+  version: 1.2.0
   model-tier: sonnet
   provider: Sillage MCP v2 (https://api.getsillage.com/api/mcp/v2)
   pairs-with: [sillage-onboarding, sillage-manage-workspace]
@@ -73,6 +73,7 @@ back here — `sillage-manage-workspace` has the ordered "Troubleshoot — few o
 An **agent** is a saved search of one **type**:
 
 - `keyword_detection` — watches LinkedIn posts for your keywords.
+- `job_posting_keyword_detection` — watches the **job postings** your tracked companies publish for your keywords.
 - `job_update` — watches for people changing jobs / getting promoted.
 - `competitor` / `partner` / `customer` — company **watchlist** agents (monitor a list of companies you supply).
 - `influencer` / `champion` — profile **watchlist** agents (monitor a list of people you supply).
@@ -92,7 +93,7 @@ What a run produces is read two ways — the same substrate, two lenses:
 - **Workspace Contents** — the raw corpus behind those events (the posts, comments, articles),
   filterable by company, person, and type.
 
-The full list of the ~25 detection types and the content types is in `reference/signal-taxonomy.md`.
+The full list of the detection types and the content types is in `reference/signal-taxonomy.md`.
 
 ## When signals come back — lead with the outreach brief
 

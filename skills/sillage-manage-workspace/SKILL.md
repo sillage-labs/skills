@@ -10,7 +10,7 @@ description: >
   "change my keywords", "pause this agent", "re-run the agents", "fix my workspace", "reconcile my setup".
 metadata:
   owner: pf@getsillage.com
-  version: 1.1.0
+  version: 1.2.0
   model-tier: sonnet
   provider: Sillage MCP v2 (https://api.getsillage.com/api/mcp/v2)
   pairs-with: [sillage-onboarding, sillage-help]
@@ -38,8 +38,8 @@ workspace** (via `sk_live_` or OAuth) — the MCP can't create a workspace, only
 
 - You haven't decided the targeting yet → run `sillage-onboarding` first to shape a sharp persona and agents,
   then come here to write them.
-- You just want to read results ("show me this week's content", "list my leads") → call the read tool
-  directly; don't run a setup loop.
+- You just want to read results ("show me this week's content", "list my signals") → call the read
+  tool directly; don't run a setup loop.
 - You want to understand the product, not change it → `sillage-help`.
 
 ## Non-negotiables (read before any write)
@@ -49,7 +49,7 @@ These four rules prevent every common way an edit goes wrong. Full detail in
 
 1. **Persona is replace-whole (PUT), never patch.** Always `get_persona` → merge your change into the
    full object → `upsert_persona` with the complete object. Send only documented persona fields.
-2. **The target account list only appends** (`add_top_accounts`) or **removes by id**
+2. **The target account list only appends** (`add_top_accounts`) or **removes by id or identifier**
    (`remove_top_accounts`, destructive). There is no full-replace. Read it with
    `read_top_account_list`.
 3. **Coverage doesn't refresh itself.** Changing the persona does not re-map existing companies —

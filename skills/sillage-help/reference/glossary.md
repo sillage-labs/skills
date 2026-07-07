@@ -56,13 +56,13 @@ most one agent to give that agent its scope; binding is swappable.
 
 ## Agent
 
-A **saved search** — one detection rule. Types: `keyword_detection`, `job_update`, and the five
-watchlist types above. An agent is created **enabled** and can be paused/renamed/reconfigured. It does
-nothing on its own until you **launch a signal run**. For watchlist types, creating the agent will
+A **saved search** — one detection rule. Types: `keyword_detection`, `job_posting_keyword_detection`
+(your keywords, but matched in the job postings your tracked companies publish), `job_update`, and the
+five watchlist types above. An agent is created **enabled** and can be paused/renamed/reconfigured. It
+does nothing on its own until you **launch a signal run**. For watchlist types, creating the agent will
 create and bind a matching watchlist for you unless you hand it an existing `watchlist_id`.
 
-These **seven** types are the whole set — there is no `job_posting` or "engagement" agent, and for a
-signal with no agent (hiring, research, CRM) you can't create one. Edit an agent **in place**
+These **eight** types are the whole set — there is no "engagement" agent. Edit an agent **in place**
 (`configure_agent`, `bind_agent_watchlist`); deleting and recreating mints a new agent id — and, for
 watchlist types, a new auto-spawned watchlist id — orphaning the list you populated.
 

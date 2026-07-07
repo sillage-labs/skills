@@ -64,18 +64,19 @@ tune after the first run.
 Map each buying signal the customer named (Wave 4 / Wave 5) to the agent that catches it. The
 Sillage MCP `create_agent` exposes these types:
 
-| The customer says…                                 | Agent type          | What it needs                         |
-| -------------------------------------------------- | ------------------- | ------------------------------------- |
-| "When someone posts about \<pain\> / our category" | `keyword_detection` | expanded `tracking_keywords`          |
-| "When a lead/champion changes jobs or is promoted" | `job_update`        | nothing — name only; tracks persona-matched people |
-| "Track our competitors' companies"                 | `competitor`        | a competitor watchlist (auto-created) |
-| "Track our partners"                               | `partner`           | a partner watchlist                   |
-| "Track our existing customers (expansion)"         | `customer`          | a customer watchlist                  |
-| "Track these creators our buyers follow"           | `influencer`        | an influencer-profile watchlist       |
-| "Track our champions / advocates"                  | `champion`          | a champion-profile watchlist          |
+| The customer says…                                 | Agent type                      | What it needs                                                      |
+| -------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------ |
+| "When someone posts about \<pain\> / our category" | `keyword_detection`             | expanded `tracking_keywords`                                       |
+| "When a target company hires for \<role/stack\>"   | `job_posting_keyword_detection` | `tracking_keywords` matched in job postings (roles, tools, stacks) |
+| "When a lead/champion changes jobs or is promoted" | `job_update`                    | nothing — name only; tracks the workspace's mapped contacts        |
+| "Track our competitors' companies"                 | `competitor`                    | a competitor watchlist (auto-created)                              |
+| "Track our partners"                               | `partner`                       | a partner watchlist                                                |
+| "Track our existing customers (expansion)"         | `customer`                      | a customer watchlist                                               |
+| "Track these creators our buyers follow"           | `influencer`                    | an influencer-profile watchlist                                    |
+| "Track our champions / advocates"                  | `champion`                      | a champion-profile watchlist                                       |
 
-These seven are the **entire** set — there is no `job_posting`, "employee-engagement", or auto-derived
-agent. If a customer asks for one, say so plainly rather than inventing it.
+These eight are the **entire** set — there is no "employee-engagement" or auto-derived agent. If a
+customer asks for one, say so plainly rather than inventing it.
 
 Pick the **one or two highest-signal** agents to start — usually a `keyword_detection` agent off
 the expanded keywords plus one watchlist agent off their competitors or influencers. More agents

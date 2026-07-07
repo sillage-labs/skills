@@ -10,7 +10,7 @@ description: >
   titles", "who should I track", "I don't know what to put".
 metadata:
   owner: pf@getsillage.com
-  version: 1.1.0
+  version: 1.2.0
   model-tier: sonnet
   provider: Sillage MCP v2 (https://api.getsillage.com/api/mcp/v2)
   pairs-with: [sillage-manage-workspace, sillage-help]
@@ -102,10 +102,11 @@ Only after the customer confirms the read-back:
 - **Persona** → `sillage_v2_upsert_persona` with the expanded `job_title`, `exclude_job_title`,
   `seniority`, `headcount`, `industry`, `location`, `additional_info`. PUT semantics — send the
   full object. Read `reference/what-sillage-needs.md` for the exact fields and allowed enum values.
-- **Agents** → `sillage_v2_create_agent`, one per confirmed signal. For `keyword_detection`, pass
-  the expanded `tracking_keywords` (mind the quoting rule in the playbook). For `job_update`, a
-  name is enough — it tracks persona-matched people. For the watchlist types
-  (competitor/partner/customer/influencer/champion), the list is created and bound for you.
+- **Agents** → `sillage_v2_create_agent`, one per confirmed signal. For `keyword_detection` and
+  `job_posting_keyword_detection`, pass the expanded `tracking_keywords` (mind the quoting rule in
+  the playbook; for job postings, keywords are the roles/stacks a buying company hires for). For
+  `job_update`, a name is enough — it tracks the workspace's mapped contacts. For the watchlist
+  types (competitor/partner/customer/influencer/champion), the list is created and bound for you.
 - **Accounts** → if they have a target-account list, `sillage_v2_add_top_accounts`, then let the
   server's own onboarding sequence take over (poll ingestion, read content). Don't re-narrate it.
 
