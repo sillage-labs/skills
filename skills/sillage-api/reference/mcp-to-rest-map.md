@@ -35,7 +35,7 @@ relative to `https://api.getsillage.com/api/v2`.
 | MCP tool                    | REST                                                     |
 | --------------------------- | -------------------------------------------------------- |
 | `enrich_company`            | `POST /enrich-company-mapping` → `202 {request_id}`      |
-| `get_account_mapping_stage` | `GET /account-mapping/{request_id}/stage`                |
+| `get_account_mapping_stage` | `GET /content-requests/{request_id}` (read `stage`)      |
 | `list_company_mappings`     | `GET /company-mappings` (gives `mapping_id`)             |
 | `get_company_mapping`       | `GET /company-mappings/{mapping_id}` (with `profiles[]`) |
 | `get_company`               | `GET /companies/{id}` (one company's enrichment)         |
