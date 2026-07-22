@@ -74,14 +74,14 @@ deliberate divergence from the offset envelope — the published pagination doc 
 ## The async / poll model
 
 Three kinds of write are asynchronous and return **`202 Accepted`** — the body only confirms the work
-was *accepted*, not done. Poll the matching status endpoint to a terminal state before reading results.
+was _accepted_, not done. Poll the matching status endpoint to a terminal state before reading results.
 **Retrying any of these is safe** — it won't create duplicates.
 
-| You called | Poll | Terminal states |
-| --- | --- | --- |
-| `POST /top-account-list` or `POST /top-account-list/accounts` | `GET /top-account-list/status` → `state` | `completed`, `failed` (from `queued`/`processing`) |
-| `POST /enrich-company-mapping` → `{request_id}` | `GET /account-mapping/{request_id}/stage` → `stage` | `completed`, `account_mapping_failed` |
-| `POST /workspace/signal-runs` → `[{signal_request_id}]` | `GET /workspace/signal-runs/{id}` → `stage` | `completed`, `completed_partial`, `failed` |
+| You called                                                    | Poll                                           | Terminal states                                    |
+| ------------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------- |
+| `POST /top-account-list` or `POST /top-account-list/accounts` | `GET /top-account-list/status` → `state`       | `completed`, `failed` (from `queued`/`processing`) |
+| `POST /enrich-company-mapping` → `{request_id}`               | `GET /content-requests/{request_id}` → `stage` | `completed`, `account_mapping_failed`              |
+| `POST /workspace/signal-runs` → `[{signal_request_id}]`       | `GET /workspace/signal-runs/{id}` → `stage`    | `completed`, `completed_partial`, `failed`         |
 
 `completed_partial` on a run means some accounts weren't scanned — the ids are in
 `metadata.failed.dropped_account_ids`; re-run to cover them. For a whole-workspace view of what's
@@ -108,17 +108,17 @@ Error bodies are problem documents, not the normal envelope:
 
 `errors` is present only on `400` / `422`. Read `detail` and `errors` — don't retry blindly.
 
-| Status | Meaning | What to do |
-| --- | --- | --- |
-| `400` | Malformed request / invalid query | Fix params (see `errors`). |
-| `401` | Bad or missing key | Fix auth. |
-| `402` | Insufficient credits | Surface to the user; can't proceed. |
-| `403` | Feature not enabled for this workspace (e.g. Account Mapping) | Surface it — do **not** retry. |
-| `404` | Not found / not visible to this key / unresolved identifier | Check the id or identifier. |
-| `409` | Conflict (e.g. deleting a watchlist with bound agents; a duplicate enrich in flight) | Resolve the conflict first. |
-| `422` | Structurally valid but semantically wrong (conflicting identifiers, type mismatch, all entities failed) | Fix the payload. |
-| `429` | Rate limited | Back off (see below). |
-| `500` | Server error | Retry with backoff; if persistent, quote `X-Request-Id` to support. |
+| Status | Meaning                                                                                                 | What to do                                                          |
+| ------ | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `400`  | Malformed request / invalid query                                                                       | Fix params (see `errors`).                                          |
+| `401`  | Bad or missing key                                                                                      | Fix auth.                                                           |
+| `402`  | Insufficient credits                                                                                    | Surface to the user; can't proceed.                                 |
+| `403`  | Feature not enabled for this workspace (e.g. Account Mapping)                                           | Surface it — do **not** retry.                                      |
+| `404`  | Not found / not visible to this key / unresolved identifier                                             | Check the id or identifier.                                         |
+| `409`  | Conflict (e.g. deleting a watchlist with bound agents; a duplicate enrich in flight)                    | Resolve the conflict first.                                         |
+| `422`  | Structurally valid but semantically wrong (conflicting identifiers, type mismatch, all entities failed) | Fix the payload.                                                    |
+| `429`  | Rate limited                                                                                            | Back off (see below).                                               |
+| `500`  | Server error                                                                                            | Retry with backoff; if persistent, quote `X-Request-Id` to support. |
 
 ## Rate limits
 

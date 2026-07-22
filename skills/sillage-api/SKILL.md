@@ -83,7 +83,8 @@ flags (`persona_set`, `list_uploaded`, `ingestion_complete`, `has_contents`) is 
    `202` → poll `GET /top-account-list/status` to `completed`. Check misses at
    `GET /top-account-list/accounts/not-found`.
 3. **Coverage (people)** — `POST /enrich-company-mapping` `{domain}` per account → `202 {request_id}`
-   → poll `GET /account-mapping/{request_id}/stage` to `completed`. Read people via
+   → poll `GET /content-requests/{request_id}` to `completed` (the former
+   `GET /account-mapping/{request_id}/stage` route was removed). Read people via
    `GET /company-mappings` then `GET /company-mappings/{mapping_id}`.
 4. **Watchlists** — `POST /watchlists` `{type,title}` → `POST /watchlists/{kind}/{watchlist_id}/entities`
    (LinkedIn URL/handle preferred; `domain` only on company lists, ≤ the documented cap per call).

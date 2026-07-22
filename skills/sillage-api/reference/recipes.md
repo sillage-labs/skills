@@ -62,7 +62,7 @@ rid=$(curl -s -X POST "$SILLAGE/enrich-company-mapping" "${auth[@]}" "${json[@]}
   -d '{"domain":"acme.com"}' | jq -r .request_id)                    # 202 -> request_id
 
 while :; do
-  st=$(curl -s "$SILLAGE/account-mapping/$rid/stage" "${auth[@]}" | jq -r .stage)
+  st=$(curl -s "$SILLAGE/content-requests/$rid" "${auth[@]}" | jq -r .stage)
   echo "$st"; [[ "$st" == completed || "$st" == account_mapping_failed ]] && break; sleep 5
 done
 
