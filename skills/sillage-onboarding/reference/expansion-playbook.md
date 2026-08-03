@@ -61,7 +61,7 @@ tune after the first run.
 
 ## Signal → agent mapping
 
-Map each buying signal the customer named (Wave 4 / Wave 5) to the agent that catches it. The
+Map each buying signal the customer named (Wave 4) to the Agent that catches it. The
 Sillage MCP `create_agent` exposes these types:
 
 | The customer says…                                 | Agent type                      | What it needs                                                      |
@@ -74,14 +74,15 @@ Sillage MCP `create_agent` exposes these types:
 | "Track our existing customers (expansion)"         | `customer`                      | a customer watchlist                                               |
 | "Track these creators our buyers follow"           | `influencer`                    | an influencer-profile watchlist                                    |
 | "Track our champions / advocates"                  | `champion`                      | a champion-profile watchlist                                       |
+| "Track champions who change jobs or get promoted" | `champion_tracking`             | a champion-profile watchlist                                       |
 
-These eight are the **entire** set — there is no "employee-engagement" or auto-derived agent. If a
+These nine are the **entire creatable set** — there is no "employee-engagement" or auto-derived
+Agent. If a
 customer asks for one, say so plainly rather than inventing it.
 
-Pick the **one or two highest-signal** agents to start — usually a `keyword_detection` agent off
-the expanded keywords plus one watchlist agent off their competitors or influencers. More agents
-is not better; signal quality is. Add the rest once the first detections come back and the
-customer trusts the output.
+Recommend **at least 3** confirmed Agents. When the signals fit, prioritize `job_update`,
+`competitor`, `customer`, then `keyword_detection`; any supported type counts toward the minimum.
+Keep each Agent tied to a real buying moment rather than creating filler for the count.
 
 ## Populating watchlists
 

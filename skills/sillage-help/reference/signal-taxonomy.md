@@ -6,10 +6,10 @@ depends on which agent types you run.
 
 ## Which agent produces what — the closed list
 
-You can only ever create **eight** agent types: `keyword_detection`, `job_posting_keyword_detection`,
-`job_update`, `competitor`, `partner`, `customer`, `influencer`, `champion`. That is the whole set —
-there is no "employee engagement" agent, no auto-derived agent. Don't propose an agent that doesn't
-exist, and don't promise a signal Sillage can't emit.
+You can create **nine** Agent types: `keyword_detection`, `job_posting_keyword_detection`,
+`job_update`, `competitor`, `partner`, `customer`, `influencer`, `champion`, and
+`champion_tracking`. That is the whole creatable set — there is no "employee engagement" Agent or
+auto-derived Agent. Don't propose a type that doesn't exist or promise a signal Sillage can't emit.
 
 | Detection group          | Produced by                                                                                      |
 | ------------------------ | ------------------------------------------------------------------------------------------------ |
@@ -17,6 +17,7 @@ exist, and don't promise a signal Sillage can't emit.
 | Keyword (job postings)   | `job_posting_keyword_detection`                                                                  |
 | Career moves             | `job_update`                                                                                     |
 | Watchlist engagement     | the matching watchlist agent (`competitor` / `partner` / `customer` / `influencer` / `champion`) |
+| Champion career moves    | `champion_tracking`                                                                              |
 
 ## Detection types, grouped
 
@@ -33,6 +34,10 @@ Detections are keyed by a signal type. Grouped by what they mean:
 - `newJob` — a tracked person started a new role.
 - `recentlyPromoted` — a tracked person was promoted.
 
+**Champion career moves** (from a `champion_tracking` Agent)
+
+- `championJobChange` — a profile on a champion watchlist changed jobs, was promoted, or left.
+
 **Raw LinkedIn engagement**
 
 - `linkedinComment` — a comment.
@@ -48,9 +53,9 @@ Detections are keyed by a signal type. Grouped by what they mean:
 - `leadLikedCompetitorContent` / `leadCommentedCompetitorContent`
 - `leadLikedInfluencerContent` / `leadCommentedInfluencerContent`
 
-> In practice the keyword agent is the workhorse. Career, job-posting-keyword, and watchlist signals
-> depend on the matching agent type being set up and run. Start with one or two high-signal agents
-> and add types as the first detections come back.
+> Career, job-posting-keyword, and watchlist signals depend on the matching Agent type being set up
+> and run. Setup recommends at least 3 Agents; prioritize `job_update`, `competitor`, `customer`, then
+> `keyword_detection` when those signals fit.
 
 ## Content types
 

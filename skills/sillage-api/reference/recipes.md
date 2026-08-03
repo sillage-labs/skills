@@ -10,34 +10,54 @@ json=(-H "Content-Type: application/json")
 ```
 
 Poll politely (a few seconds, backoff). Every write below is safe to retry.
+Before running one, read the current target, show the exact proposed difference, and wait for the
+user's explicit confirmation.
 
 ## Smoke test the key
 
 ```bash
-curl -s "$SILLAGE/persona" "${auth[@]}"      # 200 {data:...|null} = key works; 401 = bad key
+curl -s "$SILLAGE/persona" "${auth[@]}"      # compatibility read of the primary Persona
 ```
 
-## Check setup-state (one call)
+## Check setup state (one call)
 
 ```bash
-curl -s "$SILLAGE/setup-state" "${auth[@]}"   # {persona_set, list_uploaded, ingestion_complete, has_contents}
+curl -s "$SILLAGE/setup-state" "${auth[@]}"   # primary_persona_id + booleans + checklist
 ```
 
 ## Setup loop, end to end
 
-**1 — Persona (GET → merge → PUT).** Read first, merge your change into the full object, then replace:
+**1 — Primary Persona.** Discover the primary id. When one exists, read that exact Persona, merge
+locally, show the complete before/after diff, and continue only after explicit confirmation. When the
+primary alias returns null, show and confirm the complete initial Persona, then use the deprecated,
+create-first-only compatibility write:
 
 ```bash
-curl -s "$SILLAGE/persona" "${auth[@]}"     # inspect current data, merge locally, then:
-curl -s -X PUT "$SILLAGE/persona" "${auth[@]}" "${json[@]}" -d '{
-  "job_title": ["Head of Sales","VP Sales"],
-  "exclude_job_title": ["Intern"],
-  "seniority": ["vp","c_suite"],
-  "headcount": ["51-200","201-500"],
-  "industry": ["Software"],
-  "location": ["France"],
-  "additional_info": "SaaS teams selling to revenue orgs"
-}'
+persona_id=$(curl -s "$SILLAGE/persona" "${auth[@]}" | jq -r '.data.id')
+if [[ "$persona_id" == null ]]; then
+  # Show and confirm the complete object before this create-first-only call.
+  # A 409 means a Persona now exists: re-read GET /persona; never update through this alias.
+  curl -s -X PUT "$SILLAGE/persona" "${auth[@]}" "${json[@]}" -d '{
+    "job_title": ["Head of Sales","VP Sales"],
+    "exclude_job_title": ["Intern"],
+    "seniority": ["vp","c_suite"],
+    "headcount": ["51-200","201-500"],
+    "industry": ["Software"],
+    "location": ["France"],
+    "additional_info": "SaaS teams selling to revenue orgs"
+  }'
+else
+  curl -s "$SILLAGE/personas/$persona_id" "${auth[@]}"  # inspect, diff and confirm, then:
+  curl -s -X PUT "$SILLAGE/personas/$persona_id" "${auth[@]}" "${json[@]}" -d '{
+    "job_title": ["Head of Sales","VP Sales"],
+    "exclude_job_title": ["Intern"],
+    "seniority": ["vp","c_suite"],
+    "headcount": ["51-200","201-500"],
+    "industry": ["Software"],
+    "location": ["France"],
+    "additional_info": "SaaS teams selling to revenue orgs"
+  }'
+fi
 ```
 
 **2 — Target accounts (add, then poll to completed).**
@@ -122,8 +142,9 @@ curl -s "$SILLAGE/workspace/signals?agent_id=$aid&limit=50" "${auth[@]}" | jq '.
 ## Edit loop — snapshot → diff → patch
 
 ```bash
-# snapshot
-curl -s "$SILLAGE/persona" "${auth[@]}"
+# snapshot (discover the primary id via GET /persona, then use its explicit numeric id)
+persona_id=$(curl -s "$SILLAGE/persona" "${auth[@]}" | jq -r '.data.id')
+curl -s "$SILLAGE/personas/$persona_id" "${auth[@]}"
 curl -s "$SILLAGE/agents" "${auth[@]}"
 curl -s "$SILLAGE/watchlists" "${auth[@]}"
 curl -s "$SILLAGE/top-account-list/accounts?page_size=100" "${auth[@]}"

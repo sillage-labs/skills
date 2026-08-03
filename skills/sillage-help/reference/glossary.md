@@ -3,14 +3,17 @@
 The vocabulary the tools and the other skills assume. Terms are ordered along the chain (persona →
 detections), then the cross-cutting ones.
 
-## Persona / ICP
+## Primary Persona / ICP
 
 Your **Ideal Customer Profile**: who you sell to, expressed as `job_title`, `exclude_job_title`,
 `seniority`, `headcount`, `industry`, `location`, and free-form `additional_info`. It is the frame
 that decides **which people count as qualified leads** and **which companies qualify** — and it's the
-context your generated content is written against, so a thin persona produces generic content. One
-persona per workspace. It is **replaced whole** on every write (PUT), never patched — read it before
-you change it. Exact fields and allowed values live in `sillage-onboarding`'s `reference/what-sillage-needs.md`.
+context your generated content is written against, so a thin Persona produces generic content.
+Sillage can hold multiple Personas, but one explicit **primary Persona** drives setup evaluation.
+`get_setup_state.primary_persona_id` identifies it; pass that numeric id to every `get_persona` and
+`upsert_persona` call. A Persona is **replaced whole** on every write (PUT), never patched: read it by
+id, build and confirm the full diff, then write that explicit `persona_id`. Exact
+fields and allowed values live in `sillage-onboarding`'s `reference/what-sillage-needs.md`.
 
 ## Target Account List (TAL) / target accounts
 
@@ -26,7 +29,7 @@ the MCP. Read the real TAL with `read_top_account_list`.
 ## Coverage / Company Mapping
 
 **Coverage** is whether Sillage has resolved a company to its **people** — the employees whose LinkedIn
-profiles match your persona. That resolution is a **company mapping**, built by `enrich_company`. A
+profiles match your primary Persona. That resolution is a **company mapping**, built by `enrich_company`. A
 mapping gives you each person's profile: handle, LinkedIn URL, headline, position, location, sometimes
 their "about". Mappings are **versioned and historical** — a new one is a new version; removing a
 company from the front doesn't erase its past mappings.
@@ -35,7 +38,7 @@ company from the front doesn't erase its past mappings.
   people to track for it. Adding an entity to a watchlist doesn't build coverage by itself — it shows
   no coverage until a company mapping is triggered. Coverage comes from `enrich_company` on a
   **domain**.
-- Coverage does **not** auto-refresh when you change the persona — re-trigger `enrich_company` to pull
+- Coverage does **not** auto-refresh when you change the primary Persona — re-trigger `enrich_company` to pull
   people against the new ICP.
 
 ## Watchlist
@@ -51,20 +54,23 @@ set) which fixes its **kind**:
 | `influencer` | profile | creators your buyers follow                           |
 | `champion`   | profile | your advocates / internal champions                   |
 
-Company watchlists take company entities; profile watchlists take people. A watchlist is bound to at
-most one agent to give that agent its scope; binding is swappable.
+Company watchlists take company entities; profile watchlists take people. A compatible Agent can bind
+the list for scope; a champion list may be reused by both `champion` and `champion_tracking`.
 
 ## Agent
 
 A **saved search** — one detection rule. Types: `keyword_detection`, `job_posting_keyword_detection`
 (your keywords, but matched in the job postings your tracked companies publish), `job_update`, and the
-five watchlist types above. An agent is created **enabled** and can be paused/renamed/reconfigured. It
+five watchlist interaction types above, plus `champion_tracking` for job changes and promotions among
+profiles on a champion watchlist. An Agent is created **enabled** and can be
+paused/renamed/reconfigured. It
 does nothing on its own until you **launch a signal run**. For watchlist types, creating the agent will
-create and bind a matching watchlist for you unless you hand it an existing `watchlist_id`.
+create and bind a compatible watchlist for you unless you hand it an existing `watchlist_id`.
 
-These **eight** types are the whole set — there is no "engagement" agent. Edit an agent **in place**
-(`configure_agent`, `bind_agent_watchlist`); deleting and recreating mints a new agent id — and, for
-watchlist types, a new auto-spawned watchlist id — orphaning the list you populated.
+These **nine** types are the whole creatable set — there is no generic "engagement" Agent. Edit an
+Agent **in place** (`configure_agent`, `bind_agent_watchlist`); deleting and recreating mints a new
+agent id — and, for watchlist types, a new auto-spawned watchlist id — orphaning the list you
+populated.
 
 ## Signal Run
 
@@ -98,8 +104,9 @@ expect its share of the whole corpus to be small. Company-page posts often carry
 
 ## Setup-state flags
 
-`persona_set`, `list_uploaded`, `ingestion_complete`, `has_contents` — the four booleans from
-`get_setup_state` that say whether a workspace is configured and live. All true = ready.
+`persona_set`, `list_uploaded`, `ingestion_complete`, `has_contents` — four compatibility booleans
+from `get_setup_state`. Use its `persona` / `accounts` / `agents` / `contents` checklist to determine
+readiness; all four checklist dimensions must be `ok`.
 
 ## Keys — `sk_live_` vs `mk_live_`
 

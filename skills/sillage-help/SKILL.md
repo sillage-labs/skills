@@ -10,7 +10,7 @@ description: >
   target list", "what does coverage mean", "why only company keywords", "what's a signal", "glossary".
 metadata:
   owner: pf@getsillage.com
-  version: 1.2.0
+  version: 1.3.0
   model-tier: sonnet
   provider: Sillage MCP v2 (https://api.getsillage.com/api/mcp/v2)
   pairs-with: [sillage-onboarding, sillage-manage-workspace]
@@ -32,7 +32,7 @@ Everything hangs off **one chain**. Each stage feeds the next, and a weak early 
 every stage after it:
 
 ```
-Persona (your ICP)            ── defines who and what companies count
+Primary Persona (your ICP)    ── defines who and what companies count
       │
 Target Account List (TAL)     ── the companies you want to sell to
       │
@@ -48,9 +48,10 @@ Agents                        ── saved searches; each is one detection rule 
               Signal Detections  +  Workspace Contents   ── what it found: the events, and the raw posts/articles behind them
 ```
 
-So: **persona → target accounts → coverage → agents → signal runs → detections + content.** If the
-persona is thin, the wrong companies qualify. If a company has no coverage, agents that rely on its
-people find nobody. If no agent ever runs, there are no detections no matter how good the setup is.
+So: **primary Persona → target accounts → coverage → Agents → signal runs → detections + content.**
+If the primary Persona is thin, the wrong companies qualify. If a company has no coverage, Agents
+that rely on its people find nobody. If no agent ever runs, there are no detections no matter how good
+the setup is.
 
 ## The two flows people confuse
 
@@ -77,6 +78,8 @@ An **agent** is a saved search of one **type**:
 - `job_update` — watches for people changing jobs / getting promoted.
 - `competitor` / `partner` / `customer` — company **watchlist** agents (monitor a list of companies you supply).
 - `influencer` / `champion` — profile **watchlist** agents (monitor a list of people you supply).
+- `champion_tracking` — watches a champion list for job changes and promotions; it is distinct from
+  the `champion` interaction Agent.
 
 A watchlist agent detects interactions with the entities **you put on the list** — it never discovers
 who a company's competitors, partners, or tech vendors are from the corpus. You build the list from
@@ -109,19 +112,24 @@ them into a short **action brief**, not to dive back into config:
 Keep config tuning (lookback, more keywords, more agents) **secondary** — surface the brief first, then
 optimize. Burying the one hot lead under a wall of "you could also add these agents" wastes a good run.
 
-## Is a workspace even set up? — the four flags
+## Is a workspace even set up? — the checklist is authoritative
 
-`get_setup_state` answers this in one call, and its four booleans mirror the chain above:
+`get_setup_state` answers this in one call. `primary_persona_id` identifies the Persona evaluated by
+setup; its four booleans are compatibility summaries:
 
 | Flag                 | Means                                                           |
 | -------------------- | --------------------------------------------------------------- |
-| `persona_set`        | An ICP exists.                                                  |
+| `persona_set`        | A primary Persona is selected; it may still be incomplete.      |
 | `list_uploaded`      | The target account list has companies in it.                    |
 | `ingestion_complete` | Those accounts finished processing (coverage + content pulled). |
 | `has_contents`       | There is collected content to read.                             |
 
-All four true = the workspace is live. Any false = that's the next thing to fix. `sillage-manage-workspace`
-turns this into a loop.
+Read the per-dimension checklist to judge setup quality. Canonical `ok` rules are: the primary Persona
+has non-empty `job_title` and `location`; 5–20 accounts are ingested with none unresolved; at least 3
+Agents exist; and the contents feature is enabled with content available. Any creatable Agent type
+counts, with priority coverage `job_update`, `competitor`, `customer`, then `keyword_detection`.
+Setup is satisfactory only when every checklist dimension is `ok`; four true booleans alone are not
+enough. `sillage-manage-workspace` turns this into a loop.
 
 ## When NOT to use
 

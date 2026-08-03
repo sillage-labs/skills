@@ -3,11 +3,16 @@
 The structured target you fill during the interview. These are the real MCP v2 inputs; send valid
 values or the call is rejected.
 
-## Persona — `sillage_v2_upsert_persona`
+## Primary Persona — `sillage_v2_get_persona` + `sillage_v2_upsert_persona`
 
-PUT semantics: **every call fully replaces the previous persona.** To preserve fields, read first
-with `sillage_v2_get_persona`, then send the complete object. All fields optional; omit one to
-leave it unconstrained.
+Sillage supports multiple Personas, but setup evaluates the workspace's explicit **primary Persona**.
+`sillage_v2_get_setup_state` exposes its numeric `primary_persona_id`. Pass that value to both
+`sillage_v2_get_persona` and `sillage_v2_upsert_persona`; never target the first Persona in a list.
+If it is null, stop and report that the workspace has no selected primary Persona.
+
+PUT semantics: **every write fully replaces the selected Persona.** Read it by id, build and show the exact
+before/after diff, get confirmation, then send its `persona_id` and the complete object. All targeting
+fields are optional, but setup is not `ok` until `job_title` and `location` are both non-empty.
 
 | Field               | Type     | Notes                                                                                                                                                                                                                                              |
 | ------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -21,16 +26,17 @@ leave it unconstrained.
 
 ## Agents — `sillage_v2_create_agent`
 
-Required: `name`, `type`. Type is one of `keyword_detection`, `job_posting_keyword_detection`,
-`job_update`, `competitor`, `partner`, `customer`, `influencer`, `champion`.
+Required: `name`, `type`. The nine creatable types are `keyword_detection`,
+`job_posting_keyword_detection`, `job_update`, `competitor`, `partner`, `customer`, `influencer`,
+`champion`, and `champion_tracking`.
 
 - **`keyword_detection`** — monitors LinkedIn posts. Requires `tracking_keywords` (string[]).
   Optional: `max_posts_to_scrape` (int), `start_date` (ISO date, ignores older posts). Quoting rule
   for keywords lives in `expansion-playbook.md`.
 - **`job_posting_keyword_detection`** — monitors the **job postings your tracked companies publish**
-  (title and description) for your keywords. Same parameters as `keyword_detection`: requires
-  `tracking_keywords`, optional `max_posts_to_scrape`, `start_date`. The signal is hiring intent —
-  keywords here should be the roles/stacks a buying company hires for, not the pain language of posts.
+  (title and description) for your keywords. Requires `tracking_keywords`; `start_date` is optional.
+  The signal is hiring intent — keywords here should be the roles/stacks a buying company hires for,
+  not the pain language of posts.
 - **`job_update`** — detects job changes and promotions (`newJob`, `recentlyPromoted`) among the
   workspace's **mapped contacts**. Workspace-wide; takes **no parameters at creation** — `name` and
   `type` only.
@@ -38,8 +44,13 @@ Required: `name`, `type`. Type is one of `keyword_detection`, `job_posting_keywo
   type is implicitly created and bound, unless you pass an existing `watchlist_id` (its type must
   equal the agent type).
 - **`influencer` / `champion`** — profile watchlist agents, same binding behavior.
+- **`champion_tracking`** — detects job changes and promotions among profiles in a `champion`
+  watchlist. It is distinct from the `champion` interaction Agent and reuses that watchlist type.
 
 Returned agent is created enabled and structurally complete — verify `id` and `enabled: true`.
+
+Setup recommends **at least 3 Agents**. Any creatable type counts; the priority coverage is
+`job_update`, `competitor`, `customer`, then `keyword_detection` when relevant.
 
 ## Watchlists — `sillage_v2_create_watchlist`
 

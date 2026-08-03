@@ -8,16 +8,21 @@ relative to `https://api.getsillage.com/api/v2`.
 
 | MCP tool              | REST                                                                                             |
 | --------------------- | ------------------------------------------------------------------------------------------------ |
-| `get_setup_state`     | `GET /setup-state` — same four flags.                                                            |
+| `get_setup_state`     | `GET /setup-state` — same `primary_persona_id`, compatibility booleans, and checklist.           |
 | `get_rate_limit`      | **No endpoint.** Read the `X-RateLimit-Limit` / `X-RateLimit-Remaining` headers on any response. |
 | `get_requests_status` | `GET /requests-status` — flat `requests[]` of everything in flight.                              |
 
 ## Persona
 
-| MCP tool         | REST                                               |
-| ---------------- | -------------------------------------------------- |
-| `get_persona`    | `GET /persona`                                     |
-| `upsert_persona` | `PUT /persona` (replace-whole — GET → merge → PUT) |
+| MCP tool                         | REST                                                                                   |
+| -------------------------------- | -------------------------------------------------------------------------------------- |
+| `get_persona(persona_id)`         | `GET /personas/{persona_id}` — use `get_setup_state.primary_persona_id` for the setup Persona |
+| `upsert_persona(persona_id, ...)` | `PUT /personas/{persona_id}` — explicit replace-whole after read, diff, and confirmation    |
+
+REST-only compatibility routes: `GET /persona` returns the primary Persona and its id. When it returns
+`{ "data": null }`, the deprecated, create-first-only `PUT /persona` can create the initial Persona;
+it returns `409` once a Persona already exists. Never use that alias to update an existing Persona.
+MCP callers discover the id from `get_setup_state.primary_persona_id` and use `upsert_persona`.
 
 ## Target accounts (TAL)
 

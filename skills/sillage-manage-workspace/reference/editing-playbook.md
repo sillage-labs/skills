@@ -6,11 +6,11 @@ then apply the single right fix. Read `write-semantics.md` first — it's what k
 ## Step 1 — snapshot
 
 ```
-get_persona()            # the current ICP
+get_setup_state()        # includes primary_persona_id + authoritative checklist
+get_persona(persona_id)  # the explicitly selected ICP
 get_agents()             # agents: types, enabled, keywords
 list_watchlists()        # lists and how populated they are
 read_top_account_list()  # the real target accounts (NOT get_top_accounts)
-get_setup_state()        # the four readiness flags
 ```
 
 ## Step 2 — diff each axis
@@ -19,7 +19,7 @@ For each axis, call it **match** (leave it), **mismatch** (fix it), or **missing
 
 | Axis            | Read with               | Mismatch looks like…                                       | The one fix                                                                               |
 | --------------- | ----------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Persona         | `get_persona`           | wrong/narrow titles, seniority, industry, geo              | merge into the full object → `upsert_persona`; then re-`enrich_company` affected accounts |
+| Persona         | `get_persona`           | wrong/narrow titles, seniority, industry, geo              | diff the full object → confirm → `upsert_persona(persona_id)`; then re-`enrich_company` affected accounts |
 | Target accounts | `read_top_account_list` | missing target companies, or off-ICP ones present          | `add_top_accounts` (append) / `remove_top_accounts` (by ids or identifiers)               |
 | Coverage        | `list_company_mappings` | target companies with no mapped people                     | `enrich_company` by **domain**, poll to `completed`                                       |
 | Watchlists      | `list_watchlists`       | a needed list absent or empty                              | `create_watchlist` (right type) + `add_watchlist_entities`                                |
@@ -27,7 +27,8 @@ For each axis, call it **match** (leave it), **mismatch** (fix it), or **missing
 
 ## Step 3 — patch, then make it surface
 
-Apply the fix, then re-trigger whatever turns the change into results:
+Show the exact before/after change and get confirmation. Apply the fix only after that, then re-trigger
+whatever turns the change into results:
 
 - Persona or coverage change → `enrich_company` the affected accounts (coverage doesn't auto-refresh).
 - Keyword/agent change → `launch_signal_run` and poll `get_signal_run`.
@@ -39,10 +40,11 @@ Apply the fix, then re-trigger whatever turns the change into results:
 
 ## Recipes for the common edits
 
-**Widen the persona (surface more decision-makers).** `get_persona` → add the new titles/seniority
-into the full arrays → `upsert_persona` → `enrich_company` the target accounts again so their coverage
-is rebuilt against the wider ICP. Widening the persona and re-mapping is the lever that surfaces buyers
-who were previously invisible — not adding keywords.
+**Widen the primary Persona (surface more decision-makers).** `get_setup_state` → take
+`primary_persona_id` → `get_persona(persona_id)` → add the new titles/seniority into the full arrays → show and confirm the diff →
+`upsert_persona(persona_id)` → `enrich_company` the target accounts again so their coverage is rebuilt
+against the wider ICP. Widening the Persona and re-mapping surfaces buyers who were previously
+invisible — not adding keywords.
 
 **Add a competitor to track.** Is there a `competitor` watchlist? If not, `create_watchlist(type:
 competitor)` (or let `create_agent(type: competitor)` make one). `add_watchlist_entities` with the
@@ -62,6 +64,7 @@ is in `sillage-onboarding`'s `reference/expansion-playbook.md`). Then `launch_si
 **Re-point a watchlist agent.** `bind_agent_watchlist(agent_id, watchlist_id)` to swap the list it
 watches; both fields null to unlink.
 
-**Fix a half-configured workspace.** Start from `get_setup_state`: the first false flag is the next
-job — no persona → set it; no accounts → add them; not ingested → poll (or re-add / re-enrich); no
-content → check agents exist and have been run.
+**Fix a half-configured workspace.** Start from the `get_setup_state` checklist, not only its booleans:
+complete the primary Persona's `job_title` and `location`, bring resolved accounts into the 5–20 band,
+reach at least 3 supported Agents, and resolve the contents recommendation. Follow each dimension's
+message and `recommended_next_tool`.

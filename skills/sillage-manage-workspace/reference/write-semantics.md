@@ -11,8 +11,8 @@ The most damaging habit is tearing something down to "refresh" it. There is almo
   `delete_agent` + `create_agent`. Recreating mints a **new agent id**, and for watchlist types it
   auto-spawns a **new watchlist id**, orphaning the list you populated (real churn seen in the wild:
   agent `1416 → 2191`, watchlist `17 → 18 → 19`). You lose the agent's continuity for no gain.
-- **Persona:** re-running `upsert_persona` with the same values is a no-op churn — it overwrites the
-  object with itself. To change it, read → merge → PUT once; don't "set it up again."
+- **Persona:** re-running `upsert_persona` with the same values is no-op churn. To change one, retain
+  the numeric id from the read, merge, show the diff, get confirmation, then PUT once.
 - **Target accounts:** removing and re-adding an account is not a "refresh." It re-enqueues list
   ingestion (which returns `completed` quickly) but is **not** a shortcut to fresher content or
   coverage — people-mapping is a separate `enrich_company` step that a re-add does not run for you. It
@@ -22,22 +22,27 @@ If a user asks to "delete everything and redo it," push back and offer the in-pl
 
 ## Persona — replace-whole (PUT)
 
-`upsert_persona` **overwrites the entire persona** on every call. It is not a patch. Send a partial
-object and you drop every field you left out.
+Sillage supports multiple Personas. `get_setup_state` identifies the one used for setup through
+`primary_persona_id`; pass that numeric id to every `get_persona` and `upsert_persona` call. Never
+choose the first Persona returned by another surface.
 
-**Safe pattern — always read, merge, write:**
+`upsert_persona` **overwrites the entire selected Persona** on every call. It is not a patch. Send a
+partial object and you drop every targeting field you left out.
+
+**Safe pattern — always read, diff, confirm, write:**
 
 ```
-current = get_persona()
+persona_id = get_setup_state().primary_persona_id
+current = get_persona(persona_id)
 # merge your change into the FULL object
 next = { ...current, job_title: [ ...current.job_title, "CRO", "GTM Engineer" ] }
-upsert_persona(next)   # complete object, documented fields only
+# present the exact current → next diff and wait for an explicit yes
+upsert_persona(persona_id, next)  # complete documented targeting fields
 ```
 
-Send **only** the documented persona fields (`job_title`, `exclude_job_title`, `seniority`,
-`headcount`, `industry`, `location`, `additional_info`). Don't invent extra keys — an unknown field
-(e.g. `name`) has been observed to return 200 and **wipe the persona to empty**. There is one persona
-per workspace; there's no id to target and no "personas" collection.
+Alongside `persona_id`, send **only** the documented targeting fields (`job_title`,
+`exclude_job_title`, `seniority`, `headcount`, `industry`, `location`, `additional_info`). Don't
+invent extra keys. The id selects the Persona; it is not part of the replacement targeting object.
 
 ## Target account list — append and remove
 

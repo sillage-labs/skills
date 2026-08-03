@@ -10,7 +10,7 @@ description: >
   the Sillage API", "curl Sillage", "REST fallback", "sk_live", "set up the workspace over HTTP".
 metadata:
   owner: pf@getsillage.com
-  version: 1.1.0
+  version: 1.2.0
   model-tier: sonnet
   provider: Sillage REST API v2 (https://api.getsillage.com/api/v2)
   pairs-with: [sillage-onboarding, sillage-manage-workspace, sillage-help]
@@ -63,10 +63,13 @@ refresh itself, confirm-before-write / poll-before-read) holds identically here 
 3. **Integer ids are environment-specific and not portable.** `id`, `company_id`, `agent_id`,
    `signal_request_id`, mapping ids — all numeric SQL ids that only mean anything in prod. Never store
    them across environments; re-resolve from a human identifier (domain / LinkedIn URL / handle).
-4. **Persona is replace-whole; the target list is not.** `PUT /persona` overwrites the entire persona
-   (omitted fields become unset) — so **GET → merge your change into the full object → PUT**. The
-   target account list **merges** on `POST /top-account-list/accounts` (existing kept) but is **wiped
-   and replaced** by `POST /top-account-list`. Know which one you're calling.
+4. **Existing Persona writes require an explicit id and replace the whole object.** `GET /persona`
+   is a compatibility alias that reveals the primary Persona and its numeric `id`. Read the selected
+   Persona at `GET /personas/{persona_id}`, build and show the exact diff, get confirmation, then
+   replace it at `PUT /personas/{persona_id}`. Omitted targeting fields become unset. The sole setup
+   exception is the deprecated, create-first-only `PUT /persona`, used only when `GET /persona`
+   returned `{ data: null }`; it returns `409` when a Persona already exists. The target account list
+   merges on `POST /top-account-list/accounts` but is wiped and replaced by `POST /top-account-list`.
 5. **Errors are RFC 9457 `application/problem+json`.** Read `detail` and the `errors` map, don't retry
    blindly. `403` = the feature isn't enabled for the workspace (surface it). `402` = out of credits.
    `429` = rate-limited; back off using the `X-RateLimit-Remaining` header. Full error/rate-limit
@@ -74,22 +77,29 @@ refresh itself, confirm-before-write / poll-before-read) holds identically here 
 
 ## Setup loop — stand up a workspace over REST
 
-Same order as `sillage-manage-workspace` (persona defines targeting before lists ingest). Start with
-`GET /setup-state` — the REST equivalent of the MCP's `get_setup_state` — to see which of the four
-flags (`persona_set`, `list_uploaded`, `ingestion_complete`, `has_contents`) is still missing.
+Same order as `sillage-manage-workspace` (the primary Persona defines targeting before lists ingest).
+Start with `GET /setup-state` and follow its authoritative per-dimension checklist; the four booleans
+are compatibility summaries, not the complete readiness decision.
 
-1. **Persona** — `GET /persona` (null = unset) → merge → `PUT /persona`.
+1. **Primary Persona** — `GET /persona` to discover its numeric `id`. If it returns a Persona, use
+   `GET /personas/{persona_id}` → merge → show the diff → confirm →
+   `PUT /personas/{persona_id}`. If it returns `{ data: null }`, show and confirm the complete initial
+   Persona, then use the deprecated, create-first-only `PUT /persona`; a `409` means a Persona already
+   exists, so re-read the alias and continue through the explicit-id route. `job_title` and `location`
+   must both be non-empty for setup `ok`.
 2. **Target accounts** — `POST /top-account-list/accounts` `{accounts:[{domain}|{linkedin_url}]}` →
    `202` → poll `GET /top-account-list/status` to `completed`. Check misses at
-   `GET /top-account-list/accounts/not-found`.
+   `GET /top-account-list/accounts/not-found`; 5–20 resolved accounts is the recommended band.
 3. **Coverage (people)** — `POST /enrich-company-mapping` `{domain}` per account → `202 {request_id}`
    → poll `GET /content-requests/{request_id}` to `completed` (the former
    `GET /account-mapping/{request_id}/stage` route was removed). Read people via
    `GET /company-mappings` then `GET /company-mappings/{mapping_id}`.
 4. **Watchlists** — `POST /watchlists` `{type,title}` → `POST /watchlists/{kind}/{watchlist_id}/entities`
    (LinkedIn URL/handle preferred; `domain` only on company lists, ≤ the documented cap per call).
-5. **Agents** — `POST /agents` `{name,type,parameters}`. Watchlist-type agents auto-create + bind a
-   list unless you pass `watchlist_id`.
+5. **Agents** — `POST /agents` `{name,type,parameters}` until at least 3 supported Agents exist.
+   Any supported type counts; prioritize `job_update`, `competitor`, `customer`, then
+   `keyword_detection` when relevant. List-backed Agents auto-create and bind a compatible list
+   unless you pass `watchlist_id`.
 6. **Run** — `POST /workspace/signal-runs` `{agent_id}` → array of `{signal_request_id}` (keyword → 1,
    watchlist → 2: inbound + outbound) → poll `GET /workspace/signal-runs/{id}` to `completed` /
    `completed_partial` → read `GET /workspace/signals` (cursor-paginated) and `GET /workspace/signals/count`.
@@ -102,10 +112,11 @@ for the whole loop is in `reference/recipes.md`.
 Never write blind. **Snapshot → diff → patch the one axis that's off**, exactly as
 `sillage-manage-workspace` prescribes.
 
-1. **Snapshot:** `GET /persona`, `GET /agents`, `GET /watchlists`, `GET /top-account-list/accounts`.
+1. **Snapshot:** use `GET /persona` only to identify the primary id, read the selected Persona with
+   `GET /personas/{persona_id}`, then read `/agents`, `/watchlists`, and `/top-account-list/accounts`.
 2. **Diff** each axis (persona / accounts / watchlists / agents) → match / mismatch / missing.
-3. **Patch** with the right write:
-   - Persona → GET → merge → `PUT /persona` (whole object).
+3. **Show the exact diff and get confirmation**, then patch with the right write:
+   - Persona → explicit-id GET → merge → `PUT /personas/{persona_id}` (whole object).
    - Accounts → `POST /top-account-list/accounts` to add, `POST /top-account-list/accounts/remove` or
      `DELETE /top-account-list/accounts/{id}` to remove.
    - Agent keywords / enable / rename / rebind → **one** call: `PUT /agents/{agent_id}` (the REST

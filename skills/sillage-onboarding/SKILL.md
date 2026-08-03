@@ -10,7 +10,7 @@ description: >
   titles", "who should I track", "I don't know what to put".
 metadata:
   owner: pf@getsillage.com
-  version: 1.2.0
+  version: 1.3.0
   model-tier: sonnet
   provider: Sillage MCP v2 (https://api.getsillage.com/api/mcp/v2)
   pairs-with: [sillage-manage-workspace, sillage-help]
@@ -57,12 +57,13 @@ to the MCP tools once the customer has confirmed it.
    it. You are the expert they hired; act like it. See `reference/expansion-playbook.md`.
 3. **Propose, don't just collect.** Most users don't know what's useful. Offer 5–10 optimized
    candidates and let them cut, rather than asking them to produce from a blank page.
-4. **Confirm the structured version before writing.** Read back the persona/agents in plain
-   language, get a yes, _then_ call the MCP tools. Never write unconfirmed targeting.
-5. **Know when you have enough.** Persona + one or two high-signal agents is a strong start. Don't
-   drag the customer through twenty questions; you can refine later.
+4. **Read, diff, confirm, then write.** Read the selected Persona, show the complete before/after
+   difference in plain language, get a yes, _then_ call the MCP tools with its explicit numeric id.
+   Never write unconfirmed targeting or infer a Persona from list order.
+5. **Know when you have enough.** A well-set-up primary Persona plus at least 3 high-signal Agents is
+   the recommended starting point. Don't drag the customer through twenty questions; refine later.
 
-## The five waves
+## The four waves
 
 Open each wave with its load-bearing question. Follow the answer down before moving on.
 
@@ -83,30 +84,32 @@ into job-title variants and a seniority band; surface who to _exclude_. → seed
 > "Picture your three best customers. What do their _companies_ have in common — sector, size,
 > country?"
 
-**Wave 4 — The buying signals.** The observable events that mean "they need us now": funding, a
-new hire, posting about a pain, adopting/dropping a tool, a champion changing jobs. Map each to an
-agent. → seeds `create_agent`. See `reference/what-sillage-needs.md`.
+**Wave 4 — The buying signals and their orbit.** Find the observable events that mean "they need us
+now", then the competitors, customers, partners, influencers, and champions worth monitoring. Map
+each confirmed signal to a supported Agent. → seeds `create_agent` and watchlists. See
+`reference/what-sillage-needs.md`.
 
 > "When a prospect is about to become a great fit, what changes in the world that you could _see_
-> from the outside?"
-
-**Wave 5 — Their orbit.** Competitors (whose customers and engagers are fair game), influencers
-their buyers follow, existing customers and partners. → seeds watchlists and watchlist agents.
-
-> "Whose posts does your buyer stop scrolling for? Whose customers should be yours?"
+> from the outside — and which companies or people should Sillage watch for that change?"
 
 ## Turn answers into MCP calls
 
 Only after the customer confirms the read-back:
 
-- **Persona** → `sillage_v2_upsert_persona` with the expanded `job_title`, `exclude_job_title`,
-  `seniority`, `headcount`, `industry`, `location`, `additional_info`. PUT semantics — send the
-  full object. Read `reference/what-sillage-needs.md` for the exact fields and allowed enum values.
+- **Persona** → take `primary_persona_id` from `sillage_v2_get_setup_state`, then pass that numeric
+  `persona_id` to `sillage_v2_get_persona`. After diff and confirmation, call
+  `sillage_v2_upsert_persona` with the same `persona_id` and the complete object. PUT semantics
+  replace every targeting field on that selected Persona. Read `reference/what-sillage-needs.md`
+  for the exact fields and allowed enum values. If `primary_persona_id` is null, stop and surface
+  that no primary Persona is selected; do not infer one or attempt a write.
 - **Agents** → `sillage_v2_create_agent`, one per confirmed signal. For `keyword_detection` and
   `job_posting_keyword_detection`, pass the expanded `tracking_keywords` (mind the quoting rule in
   the playbook; for job postings, keywords are the roles/stacks a buying company hires for). For
-  `job_update`, a name is enough — it tracks the workspace's mapped contacts. For the watchlist
-  types (competitor/partner/customer/influencer/champion), the list is created and bound for you.
+  `job_update`, a name is enough — it tracks the workspace's mapped contacts. For the five
+  interaction watchlist types (competitor/partner/customer/influencer/champion), the list is created
+  and bound for you. `champion_tracking` instead tracks job changes in a champion watchlist. Create
+  at least 3 Agents total; prioritize `job_update`, `competitor`, `customer`, then
+  `keyword_detection` when those signals fit the customer.
 - **Accounts** → if they have a target-account list, `sillage_v2_add_top_accounts`, then let the
   server's own onboarding sequence take over (poll ingestion, read content). Don't re-narrate it.
 
@@ -125,5 +128,5 @@ When the interview ends, drop the interviewer voice and give a clean read:
 <the optimized sets they wouldn't have written themselves, with a one-line rationale>
 
 ## Still open
-<the one or two gaps to revisit once the first signals come back>
+<the remaining gaps to revisit once the first signals come back>
 ```
