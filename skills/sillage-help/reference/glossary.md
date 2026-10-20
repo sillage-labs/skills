@@ -1,112 +1,127 @@
 # Glossary — every Sillage term, defined
 
-The vocabulary the tools and the other skills assume. Terms are ordered along the chain (persona →
-detections), then the cross-cutting ones.
+The vocabulary the tools and the other skills assume, ordered along the chain (business unit →
+signals), then the cross-cutting terms. MCP tool names drop the `sillage_v2_` prefix.
 
-## Persona / ICP
+**Contents:** Business unit · List · Key accounts · Account monitoring · Signal bucket · Account
+mapping · Signal template · Signal setup · Scope · Schedule · Signal run · Inbound / Outbound ·
+Signal · Content · Setup-state checklist · Keys
 
-Your **Ideal Customer Profile**: who you sell to, expressed as `job_title`, `exclude_job_title`,
-`seniority`, `headcount`, `industry`, `location`, and free-form `additional_info`. It is the frame
-that decides **which people count as qualified leads** and **which companies qualify** — and it's the
-context your generated content is written against, so a thin persona produces generic content. One
-persona per workspace. It is **replaced whole** on every write (PUT), never patched — read it before
-you change it. Exact fields and allowed values live in `sillage-onboarding`'s `reference/what-sillage-needs.md`.
+## Business unit / persona / ICP
 
-## Target Account List (TAL) / target accounts
+Your **Ideal Customer Profile**, one per business unit: `job_titles`, `excluded_job_titles`,
+`locations`, `headcounts`, `industries`, `seniorities`, `exclusion_criteria`, plus a `name` and a
+`tag`. It decides which people count as leads and is the context content is written against. A
+workspace can hold **several personas** (business units), when Sillage has enabled it; each is a
+numeric `persona_id` (`get_personas`). `job_titles` + `locations` are the two fields that unblock
+account mapping and most signal setups (an incomplete persona → 422). `update_persona` changes only
+the fields you send; `create_persona` **adds** a business unit — never use it to replace one. Unknown
+fields (including the old singular names `job_title`, `location`) are refused.
 
-The companies you **want to sell to** — the list Sillage enriches and generates content for. You
-identify accounts by **domain** (preferred, best match accuracy) or LinkedIn URL. The list is
-**additive** (you append accounts; you remove them by id) — there is no "replace the whole list" in
-the MCP. Read the real TAL with `read_top_account_list`.
+## List
 
-> Not to be confused with the result of `get_top_accounts`, which returns **every company that has any
-> activity trace** in the workspace (mapped, or with content, or with a request) — a superset, not
-> your target list. For "what am I actually targeting", use `read_top_account_list`.
+A named set of companies or people, with a **type** (fixed once set) that fixes its **kind**:
 
-## Coverage / Company Mapping
+| Type         | Kind    | Used for                                                        |
+| ------------ | ------- | --------------------------------------------------------------- |
+| `customer`   | company | **key accounts** — your customers                               |
+| `prospect`   | company | **key accounts** — who you want to sell to                      |
+| `competitor` | company | watched by the competitor signals                               |
+| `partner`    | company | watched by the partner signal                                   |
+| `influencer` | profile | watched by the influencer signal                                |
+| `champion`   | profile | watched by the champion signal (members may carry `company`)    |
+| `employee`   | profile | "All my employees" — comes with the workspace, can't be created |
 
-**Coverage** is whether Sillage has resolved a company to its **people** — the employees whose LinkedIn
-profiles match your persona. That resolution is a **company mapping**, built by `enrich_company`. A
-mapping gives you each person's profile: handle, LinkedIn URL, headline, position, location, sometimes
-their "about". Mappings are **versioned and historical** — a new one is a new version; removing a
-company from the front doesn't erase its past mappings.
+A list is attached to business units through `persona_ids` (empty = every business unit). `mode` is
+`manual` or `smart` (a smart list is filled by rules in the app and may remove members you add).
+Lists are created and filled through the API (`create_list`, `add_list_members`) — Sillage never
+creates one for you.
 
-- **"No coverage"** — the badge/state meaning no mapping exists for an entity yet, so there are no
-  people to track for it. Adding an entity to a watchlist doesn't build coverage by itself — it shows
-  no coverage until a company mapping is triggered. Coverage comes from `enrich_company` on a
-  **domain**.
-- Coverage does **not** auto-refresh when you change the persona — re-trigger `enrich_company` to pull
-  people against the new ICP.
+## Key accounts
 
-## Watchlist
+Every company on a `customer` or `prospect` list. This is what `account_monitoring` signals look at,
+what setup state counts as `accounts`, and what contents are generated for. Older docs call it the
+Target Account List (TAL): there is no separate account list any more — add accounts to a customer or
+prospect list (`add_list_members`). Each member reports its `monitoring` status per business unit.
 
-A named list of entities you **monitor** — separate from the TAL. It has a **type** (immutable once
-set) which fixes its **kind**:
+## Account monitoring
 
-| Type         | Kind    | You're monitoring…                                    |
-| ------------ | ------- | ----------------------------------------------------- |
-| `customer`   | company | your existing customers (expansion / churn awareness) |
-| `competitor` | company | rival companies                                       |
-| `partner`    | company | partners                                              |
-| `influencer` | profile | creators your buyers follow                           |
-| `champion`   | profile | your advocates / internal champions                   |
+The paid switch that makes Sillage keep watching a key account: per account, per business unit, per
+month, in credits, charged right away. Set it with `signal_buckets: ["essential"]` (or `null` to
+stop) on a whole list (`update_list`) or on chosen accounts (`set_account_monitoring`); read the
+totals and monthly cost with `get_account_monitoring`. A list attached to several business units is
+charged in each. Statuses: `monitored`, `not_covered` (renewal unpaid — top up, retried hourly),
+`monitored_elsewhere` (another business unit only), `not_monitored`. Stopping never refunds the
+current month. Always state the cost and ask before turning it on.
 
-Company watchlists take company entities; profile watchlists take people. A watchlist is bound to at
-most one agent to give that agent its scope; binding is swappable.
+## Signal bucket
 
-## Agent
+The tier that prices account monitoring: `essential`, `standard`, `advanced` (cumulative — a higher
+tier includes the lower ones). A template carries the lowest bucket that includes it. Only
+`essential` is in use today. Explanation only: no MCP tool or REST route lists buckets — a template's `pricing` names its bucket.
 
-A **saved search** — one detection rule. Types: `keyword_detection`, `job_posting_keyword_detection`
-(your keywords, but matched in the job postings your tracked companies publish), `job_update`, and the
-five watchlist types above. An agent is created **enabled** and can be paused/renamed/reconfigured. It
-does nothing on its own until you **launch a signal run**. For watchlist types, creating the agent will
-create and bind a matching watchlist for you unless you hand it an existing `watchlist_id`.
+## Account mapping / coverage
 
-These **eight** types are the whole set — there is no "engagement" agent. Edit an agent **in place**
-(`configure_agent`, `bind_agent_watchlist`); deleting and recreating mints a new agent id — and, for
-watchlist types, a new auto-spawned watchlist id — orphaning the list you populated.
+Resolving a company to its **people** — the employees whose profiles match the persona. Adding
+companies to a customer, competitor or partner list starts it; on key accounts, monitoring pays for
+it. Read it with `list_company_mappings` / `get_company_mapping`; in-flight work with
+`get_requests_status`. No mapping ("no coverage") → no decision-makers to track there.
 
-## Signal Run
+## Signal template
 
-One **execution** of an agent — the agent going out to look. Keyword and job agents produce **one**
-run; watchlist agents produce **two** (see inbound/outbound). A run fans out to one job per target
-account and reports a stage (`running` → `completed` / `completed_partial` / `failed`) and per-job
-counts (matched, written, deduped, errored).
+One entry of the **signal catalogue**: a kind of signal Sillage can detect, with a stable `key`, a
+`category`, the `scopes` it supports, its `pricing` and the `setup.fields` it asks. Only `live` ones
+can be set up. See `signal-taxonomy.md`.
+
+## Signal setup
+
+A template you answered, saved for **one business unit** (`persona_id`) and, when the template watches
+a list, **one list** (`list_id`) — both fixed for the setup's life. Its `status` is `enabled` or
+`disabled`; `last_detected_at` tells when it last found something. Edit with `configure_signal_setup`
+(merge: sent keys replace, `null` removes). To change the list or business unit, create a new setup,
+then delete the old one. (Replaces the old "agent"; `/v2/agents` sunsets on 2027-04-01.)
+
+## Scope
+
+Where a setup looks, answered in `parameters.scopes`: `account_monitoring` (your key accounts, covered
+by monitoring) and/or `discovery` (everyone else, paid per signal found at the template's price).
+
+## Schedule
+
+`schedule: "weekly"` — the setup runs by itself every week (first run on the next tick). `null` —
+manual: it runs only when launched.
+
+## Signal run
+
+One execution of a setup (`launch_signal_run` with its `signal_setup_id`). Status `pending` →
+`in_progress` → `completed` / `failed`; poll with `get_signal_run`. List-engagement signals start one
+run per direction. Re-running is safe — detections are deduplicated. A disabled setup can't be launched.
 
 ## Inbound / Outbound
 
-Two directions of a watchlist run:
+The two directions of a list-engagement signal: **inbound** — a key-account person engages the watched
+entity's content; **outbound** — the watched entity engages a key account's content.
 
-- **Inbound** — a **target** engages the watched entity's content (someone you're prospecting comments
-  on your competitor's post).
-- **Outbound** — the **watched entity** engages a target's content.
+## Signal (detection)
 
-## Signal Detection
+One detected event — "this person did this thing" — with its `signal_type`, `signal_setup_id`, lead,
+company and source link. Read with `list_signals` / `get_signal`; interpret with
+`get_signal_playbook` (by template `key`).
 
-A single detected event — "this person did this thing" — keyed by agent and signal type. The event
-feed. See `signal-taxonomy.md` for every type.
+## Content
 
-## Workspace Content
+The raw corpus behind signals: posts, company posts, comments, reactions, job postings, articles.
+Available when the plan includes content for key accounts (else 403 / `contents: blocked`). Unfiltered
+it's a superset — filter by company. Company-page posts often carry an empty body.
 
-The raw collected corpus behind detections: LinkedIn posts, company posts, comments, reactions, job
-postings, articles. Same substrate as detections, read through a different lens — filterable by
-company, person, and content type. See `signal-taxonomy.md` for the content types.
+## Setup-state checklist
 
-Read unfiltered it's a **superset** — largely person-authored posts and content from companies beyond
-your target list — so filter by `company_id` / `company_domain` for a target account's material, and
-expect its share of the whole corpus to be small. Company-page posts often carry an empty body.
-
-## Setup-state flags
-
-`persona_set`, `list_uploaded`, `ingestion_complete`, `has_contents` — the four booleans from
-`get_setup_state` that say whether a workspace is configured and live. All true = ready.
+`get_setup_state`: four dimensions — `persona`, `accounts`, `signal_setups`, `contents` — each `ok` /
+`warning` / `blocked` with a message and a `recommended_next_tool`. All `ok` = live.
 
 ## Keys — `sk_live_` vs `mk_live_`
 
-- **`sk_live_`** — a **workspace key**. It scopes the MCP to one workspace: read and edit that
-  workspace's config and results. This is what the public MCP uses under the hood — an OAuth
-  connection (the default; no key to paste) resolves to the workspace's `sk_live_` key. It **cannot
-  create a workspace**.
-- **`mk_live_`** — a **partner/master key** used by Sillage's own provisioning to create and operate
-  workspaces on a customer's behalf. It is not part of the workspace MCP and isn't needed to run or
-  edit an existing workspace.
+- **`sk_live_`** — a **workspace key**: one workspace, read and edit. The MCP's OAuth connection
+  resolves to it. It cannot create a workspace.
+- **`mk_live_`** — a **partner/master key** to create and operate many customer workspaces
+  (`sillage-partner-api`). Not part of the workspace MCP.

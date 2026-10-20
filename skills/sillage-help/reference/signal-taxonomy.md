@@ -1,83 +1,91 @@
-# Signal & content taxonomy
+# Signal catalogue & content taxonomy
 
-The full vocabulary of what Sillage detects and collects. Two layers: **detections** (the events an
-agent produces) and **contents** (the raw material behind them). Which detections you can produce
-depends on which agent types you run.
+Three layers: the **catalogue** (the signal templates you can set up), the **detections** a setup
+produces, and the **contents** behind them. Always read the live catalogue with
+`get_signal_templates` (`GET /v3/signal-templates`) — this page is a snapshot to reason with.
 
-## Which agent produces what — the closed list
+## The catalogue — signal templates
 
-You can only ever create **eight** agent types: `keyword_detection`, `job_posting_keyword_detection`,
-`job_update`, `competitor`, `partner`, `customer`, `influencer`, `champion`. That is the whole set —
-there is no "employee engagement" agent, no auto-derived agent. Don't propose an agent that doesn't
-exist, and don't promise a signal Sillage can't emit.
+Each template carries:
 
-| Detection group          | Produced by                                                                                      |
-| ------------------------ | ------------------------------------------------------------------------------------------------ |
-| Keyword (LinkedIn posts) | `keyword_detection`                                                                              |
-| Keyword (job postings)   | `job_posting_keyword_detection`                                                                  |
-| Career moves             | `job_update`                                                                                     |
-| Watchlist engagement     | the matching watchlist agent (`competitor` / `partner` / `customer` / `influencer` / `champion`) |
+- `key` — stable identifier (`job-change`, …). Use it to name a signal; `id` is what
+  `create_signal_setup` takes. `missing_priority_types` in setup state and `get_signal_playbook` use
+  the `key`.
+- `category` — `my_properties`, `my_network`, `competition`, `people`, `market`, `internal_intents`.
+- `status` — only `live` can be set up; `coming_soon` templates are listed only with
+  `include_coming_soon` and are refused on create.
+- `scopes` — where it can look: `discovery` (outside your key accounts) and/or `account_monitoring`
+  (your key accounts).
+- `pricing` — `account_monitoring` (credits per key account per month, with its `signal_bucket`) and
+  `discovery` (credits per signal found); either may be `null`.
+- `setup.fields` — the JSON Schema of the `parameters` to send (labels, hints, defaults, which list type
+  a `list_id` must be).
+- `tags` — `popular`, and `not_set_up` (computed: the workspace has no setup of it yet).
 
-## Detection types, grouped
+### Live templates (snapshot)
 
-Detections are keyed by a signal type. Grouped by what they mean:
+| `key`                                              | Category    | Watches a list   |
+| -------------------------------------------------- | ----------- | ---------------- |
+| `engaged-with-my-content-on-linkedin`              | my_network  | employee (yours) |
+| `mentioned-my-brand`                               | my_network  | —                |
+| `engaged-with-my-partners-on-linkedin`             | my_network  | partner          |
+| `champion-joined-a-new-company-or-promoted`        | my_network  | champion         |
+| `engaged-with-competitors-on-linkedin`             | competition | competitor       |
+| `mentioned-competitor-brand-on-linkedin`           | competition | —                |
+| `job-change`                                       | people      | —                |
+| `hiring-for-roles-my-product-serves`               | people      | —                |
+| `mentioned-keywords-in-their-job-offers`           | market      | —                |
+| `mentioned-keywords-on-linkedin`                   | market      | —                |
+| `engaged-with-influencers-in-my-space-on-linkedin` | market      | influencer       |
 
-**Keyword**
+Prices are not listed here: each template's `pricing` (and the bucket it sits in) gives them, and
+they can differ per partner. Read them live, never quote a fixed number.
 
-- `keywordDetection` — a LinkedIn post matched one of an agent's tracking keywords.
-- `jobPostingKeywordDetection` — a job posting from a tracked company matched one of a
-  `job_posting_keyword_detection` agent's keywords (title or description).
+- **Nothing outside this list can be set up.** About 25 more templates are `coming_soon` (website
+  visits, funding, headcount growth, tech adoption, CRM re-engagement…) — don't promise them.
+- **No `customer` signal exists.** Customers are a key-account list, not a watched list.
+- **List-watching templates need an existing list** of the named type (`list_id`). It is never
+  created for you, and it detects interactions with the entities **you put on it** — it never
+  discovers who a company's competitors or partners are.
+- **Job-offer templates** (`hiring-for-…`, `mentioned-keywords-in-their-job-offers`) only run on key
+  accounts today; their `scopes` is accepted but marked not honoured.
+- **Champion and job-offer** setups are the only ones that don't need a complete persona.
 
-**Career moves** (from a `job_update` agent)
+## Detection types
 
-- `newJob` — a tracked person started a new role.
-- `recentlyPromoted` — a tracked person was promoted.
+Detections (`list_signals` / `POST /v3/signals/query`) carry `signal_setup_id` (→ its template) and a
+`signal_type`, written snake_case on v3:
 
-**Raw LinkedIn engagement**
-
-- `linkedinComment` — a comment.
-- `linkedinReaction` — a reaction.
-
-**Watchlist cross-engagement** (from watchlist agents; each has an inbound and outbound comment form). A watchlist agent detects interactions with the entities **you put on the list** — it does not discover a company's competitors, partners, or tech vendors from the corpus. You supply the list; the agent watches it.
-
-- `competitorInboundComment` / `competitorOutboundComment`
-- `partnerInboundComment` / `partnerOutboundComment`
-- `customerInboundComment` / `customerOutboundComment`
-- `influencerInboundComment` / `influencerOutboundComment`
-- `championInboundComment` / `championOutboundComment`
-- `leadLikedCompetitorContent` / `leadCommentedCompetitorContent`
-- `leadLikedInfluencerContent` / `leadCommentedInfluencerContent`
-
-> In practice the keyword agent is the workhorse. Career, job-posting-keyword, and watchlist signals
-> depend on the matching agent type being set up and run. Start with one or two high-signal agents
-> and add types as the first detections come back.
+- **Keyword** — `keyword_detection` (a LinkedIn post matched), `job_posting_keyword_detection` (a job
+  posting matched).
+- **Career moves** — `new_job`, `recently_promoted`, `champion_job_change`.
+- **List engagement** (inbound = a key-account person engages the watched entity; outbound = the
+  watched entity engages a key account) — `competitor_inbound_comment` / `_outbound_comment`, same for
+  `partner_`, `influencer_`, `champion_`; plus `lead_liked_competitor_content`,
+  `lead_commented_competitor_content`.
+- **Your own content** — `lead_liked_own_content`, `lead_commented_own_content`.
+- **Raw engagement / jobs** — `linkedin_comment`, `linkedin_reaction`, `job_posting`,
+  `job_posting_insight`, `job_posting_hiring_manager`.
 
 ## Content types
 
-`get_contents` returns the raw corpus behind detections, filterable by company, person, date and type:
+`get_contents` (`POST /v3/contents/query`) returns the raw corpus, filterable by company, person, date
+and `content_type`:
 
-- `linkedinPost` — a post by a tracked person.
-- `linkedinCompanyPost` — a post by a company page. Its body/excerpt **often arrives empty**, so
-  company-page posts are unreliable for text-mining brand/tech/partner mentions.
-- `linkedinComment` — a comment.
-- `linkedinReaction` — a reaction.
-- `newJob` / `recentlyPromoted` — the career-move records behind `job_update` detections.
-- `jobPosting` / `linkedinJobPosting` — a job opening (generic, or LinkedIn-sourced).
-- `webArticle` — an article found by research.
-- `pressRelease` — a press release.
-- `blogPost` — a blog post.
-- `socialPost` — a post from a non-LinkedIn social source.
+- `linkedin_post` — a post by a person.
+- `linkedin_company_post` — a post by a company page. Its body **often arrives empty**: unreliable for
+  text-mining brand/tech/partner mentions.
+- `linkedin_comment`, `linkedin_reaction`.
+- `recently_promoted` — the career record behind a promotion.
+- `linkedin_job_posting` — a job opening.
+- `web_article`, `press_release`, `blog_post`.
 
 ## Detections vs contents — which to read
 
-- Want **"what happened"** (the event feed, by agent / signal type) → detections (`list_signals`).
-- Want **"the material"** (posts/articles for a company or person, by type) → contents
-  (`get_contents`), which also carries the person→company link. The default `normalized` format is a
-  clean projection (text, author, engagement, mentions); `detailed` is a deprecated alias of it.
+- **"What happened"** (the event feed, per setup / type) → signals.
+- **"The material"** (posts/articles for a company or person) → contents.
 
-> **`get_contents` unfiltered is a superset, not your target accounts.** With no filter it returns the
-> whole workspace corpus — largely person-authored posts (`company_id: null`) and content from
-> companies beyond your target list — so a small target-account share is **expected, not a defect**. Filter by `company_id` /
-> `company_domain` for a target account's material. And don't spin up a sub-agent to regex the corpus
-> for a company's partners or tech stack — the data isn't shaped for that (company-page bodies are
-> often empty), and it isn't what a watchlist agent needs.
+> **Contents unfiltered is a superset, not your key accounts** — largely person-authored posts and
+> companies beyond your lists, so a small key-account share is **expected**. Filter by company. Don't
+> regex the corpus for a company's partners or tech stack — company-page bodies are often empty, and
+> it isn't what a list-watching signal needs.

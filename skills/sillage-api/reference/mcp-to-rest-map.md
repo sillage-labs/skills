@@ -1,91 +1,88 @@
 # MCP tool → REST endpoint map
 
-Every `sillage_v2_*` MCP tool referenced in `sillage-manage-workspace` and the other skills, with its
-REST equivalent. Use this to translate any MCP-written instruction into an HTTP call. Method + path are
-relative to `https://api.getsillage.com/api/v2`.
+Every tool the Sillage MCP registers (names below drop the `sillage_v2_` prefix), with its REST
+equivalent. Paths are relative to `https://api.getsillage.com/api/v3`; the MCP calls these same
+routes under the hood. A tool not in this table doesn't exist — older skill versions named agent,
+watchlist and target-account tools that are gone.
 
 ## Setup / meta
 
-| MCP tool              | REST                                                                                             |
-| --------------------- | ------------------------------------------------------------------------------------------------ |
-| `get_setup_state`     | `GET /setup-state` — same four flags.                                                            |
-| `get_rate_limit`      | **No endpoint.** Read the `X-RateLimit-Limit` / `X-RateLimit-Remaining` headers on any response. |
-| `get_requests_status` | `GET /requests-status` — flat `requests[]` of everything in flight.                              |
+| MCP tool              | REST                                                                           |
+| --------------------- | ------------------------------------------------------------------------------ |
+| `get_setup_state`     | `GET /setup-state` — same checklist; the tool adds `recommended_next_tool`.    |
+| `get_requests_status` | `GET /requests-status` — everything still being prepared.                      |
+| `get_signal_playbook` | **No endpoint.** Reference text (also the MCP resource `sillage://playbooks`). |
+| `list_types`          | **No endpoint.** Fixed type → kind pairs (see glossary "List").                |
 
-## Persona
+Rate limits have no tool: read the `X-RateLimit-*` headers on any response.
 
-| MCP tool         | REST                                               |
-| ---------------- | -------------------------------------------------- |
-| `get_persona`    | `GET /persona`                                     |
-| `upsert_persona` | `PUT /persona` (replace-whole — GET → merge → PUT) |
+## Business units (personas)
 
-## Target accounts (TAL)
+| MCP tool         | REST                                                         |
+| ---------------- | ------------------------------------------------------------ |
+| `get_personas`   | `GET /personas` (+ `GET /personas/{persona_id}`)             |
+| `create_persona` | `POST /personas` — adds a business unit                      |
+| `update_persona` | `PATCH /personas/{persona_id}` — only the fields sent change |
 
-| MCP tool                                   | REST                                                                                                 |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `read_top_account_list` (view `accounts`)  | `GET /top-account-list/accounts`                                                                     |
-| `read_top_account_list` (view `not_found`) | `GET /top-account-list/accounts/not-found`                                                           |
-| `add_top_accounts`                         | `POST /top-account-list/accounts` (merge) — _not_ `POST /top-account-list`, which wipes-and-replaces |
-| `remove_top_accounts`                      | `POST /top-account-list/accounts/remove` (batch) or `DELETE /top-account-list/accounts/{id}`         |
-| `get_top_account_list_status`              | `GET /top-account-list/status` (+ `GET /top-account-list/count`)                                     |
-| `get_top_accounts`                         | `GET /top-accounts` (activity superset, not the TAL)                                                 |
+## Lists
 
-## Coverage / company mapping
+| MCP tool             | REST                                                                            |
+| -------------------- | ------------------------------------------------------------------------------- |
+| `create_list`        | `POST /lists`                                                                   |
+| `list_lists`         | `GET /lists`                                                                    |
+| `get_list`           | `GET /lists/{kind}/{list_id}`                                                   |
+| `update_list`        | `PUT /lists/{kind}/{list_id}` (incl. `signal_buckets` = monitor the whole list) |
+| `delete_list`        | `DELETE /lists/{kind}/{list_id}`                                                |
+| `list_members`       | `GET /lists/{kind}/{list_id}/members`                                           |
+| `add_list_members`   | `POST /lists/{kind}/{list_id}/members` `{members}`                              |
+| `remove_list_member` | `DELETE /lists/{kind}/{list_id}/members/{member_id}`                            |
 
-| MCP tool                    | REST                                                     |
-| --------------------------- | -------------------------------------------------------- |
-| `enrich_company`            | `POST /enrich-company-mapping` → `202 {request_id}`      |
-| `get_account_mapping_stage` | `GET /content-requests/{request_id}` (read `stage`)      |
-| `list_company_mappings`     | `GET /company-mappings` (gives `mapping_id`)             |
-| `get_company_mapping`       | `GET /company-mappings/{mapping_id}` (with `profiles[]`) |
-| `get_company`               | `GET /companies/{id}` (one company's enrichment)         |
+## Account monitoring
 
-## Watchlists
+| MCP tool                 | REST                                                                |
+| ------------------------ | ------------------------------------------------------------------- |
+| `get_account_monitoring` | `GET /account-monitoring` — totals and monthly cost                 |
+| `set_account_monitoring` | `PUT /account-monitoring/accounts` — monitor / stop accounts (paid) |
 
-| MCP tool                  | REST                                                                                                                  |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `list_watchlist_types`    | **No endpoint.** The type→kind pairs are fixed: competitor/partner/customer → company; influencer/champion → profile. |
-| `create_watchlist`        | `POST /watchlists`                                                                                                    |
-| `list_watchlists`         | `GET /watchlists`                                                                                                     |
-| `get_watchlist`           | `GET /watchlists/{kind}/{watchlist_id}`                                                                               |
-| `update_watchlist`        | `PUT /watchlists/{kind}/{watchlist_id}`                                                                               |
-| `delete_watchlist`        | `DELETE /watchlists/{kind}/{watchlist_id}`                                                                            |
-| `add_watchlist_entities`  | `POST /watchlists/{kind}/{watchlist_id}/entities`                                                                     |
-| `list_watchlist_entities` | `GET /watchlists/{kind}/{watchlist_id}/entities`                                                                      |
-| `remove_watchlist_entity` | `DELETE /watchlists/{kind}/{watchlist_id}/entities/{entity_id}`                                                       |
+## Signal catalogue & setups
 
-## Agents
+| MCP tool                 | REST                                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| `get_signal_templates`   | `GET /signal-templates` / `GET /signal-templates/{id}`                                  |
+| `get_signal_setups`      | `GET /signal-setups` (`?persona_id=`) / `GET /signal-setups/{id}`                       |
+| `create_signal_setup`    | `POST /signal-setups` `{signal_template_id, parameters, persona_id?, schedule?, name?}` |
+| `configure_signal_setup` | `PATCH /signal-setups/{id}` (merge; `null` removes a key)                               |
+| `delete_signal_setup`    | `DELETE /signal-setups/{id}`                                                            |
 
-| MCP tool               | REST                                                                               |
-| ---------------------- | ---------------------------------------------------------------------------------- |
-| `create_agent`         | `POST /agents`                                                                     |
-| `get_agents`           | `GET /agents` (list) / `GET /agents/{agent_id}` (one)                              |
-| `configure_agent`      | `PUT /agents/{agent_id}` (name / enabled / parameters)                             |
-| `bind_agent_watchlist` | `PUT /agents/{agent_id}` (`watchlist_id` [+ `watchlist_kind`]; both null = unbind) |
-| `delete_agent`         | `DELETE /agents/{agent_id}`                                                        |
+## Runs & signals
 
-> REST folds `configure_agent` **and** `bind_agent_watchlist` into one `PUT /agents/{agent_id}` — send
-> only the fields you're changing.
+| MCP tool            | REST                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `launch_signal_run` | `POST /signal-runs` `{signal_setup_id}` → `202`, one run per direction (+ Discovery) |
+| `get_signal_run`    | `GET /signal-runs/{id}` (+ `GET /signal-runs` to list)                               |
+| `list_signals`      | `POST /signals/query` (cursor)                                                       |
+| `get_signal`        | `GET /signals/{id}`                                                                  |
+| `delete_signal`     | `DELETE /signals/{id}`                                                               |
 
-## Signals — runs & results
+## Accounts, people & content
 
-| MCP tool            | REST                                                                                           |
-| ------------------- | ---------------------------------------------------------------------------------------------- |
-| `launch_signal_run` | `POST /workspace/signal-runs` → array of `{signal_request_id}`                                 |
-| `get_signal_run`    | `GET /workspace/signal-runs/{id}` (+ `GET /workspace/signal-runs` for all in-flight)           |
-| `list_signals`      | `GET /workspace/signals` (**cursor**-paginated, rich filters) + `GET /workspace/signals/count` |
+| MCP tool                | REST                                                          |
+| ----------------------- | ------------------------------------------------------------- |
+| `list_company_mappings` | `GET /company-mappings`                                       |
+| `get_company_mapping`   | `GET /company-mappings/{mapping_id}`                          |
+| `get_company`           | `GET /companies/{id}`                                         |
+| `get_lead`              | `GET /leads/{id}`                                             |
+| `get_contents`          | `POST /contents/query` (cursor) / `GET /contents/{id}`        |
+| `get_content_requests`  | `POST /content-requests/query` / `GET /content-requests/{id}` |
 
-> There are no `list_signal_types`, `add_signal`, `update_signal`, or `delete_signal` MCP tools —
-> older skill versions referenced them, but they were never shipped. Signals are **read-only** for
-> direct clients on REST too: the write endpoints exist only on the partner surface (`mk_live_`).
+## Things REST adds beyond the MCP
 
-## Content
+- **Leads & companies**: `POST /leads/query`, `POST /leads/count`, `PATCH /leads/{id}`,
+  `POST /companies/query`.
+- **Signal counts**: `POST /signals/count`.
+- **List history**: `GET /lists/{kind}/{list_id}/membership-logs`, `POST /lists/{kind}/{list_id}/restore`.
+- **Billing**: `GET /credits/balance`, `GET /usage` (cursor).
 
-| MCP tool               | REST                                                                                                                                                                |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_contents`         | `GET /contents` (or `POST /contents/query` for long identifier lists). Both default `response_format=normalized`; `detailed` is a deprecated alias of `normalized`. |
-| `get_content_requests` | `GET /content-requests` (or `POST /content-requests/query`)                                                                                                         |
-
-## Things the REST API adds beyond the MCP surface
-
-- `POST /top-account-list` — full destructive TAL replace (the MCP only appends/removes).
+Gone from v3 (no route, no tool): agents, watchlists, the target account list, `enrich-company-mapping`,
+signal buckets, the singular `/persona` and signal create/update. Key accounts are customer/prospect list members;
+mapping follows monitoring.
