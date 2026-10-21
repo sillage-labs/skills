@@ -7,9 +7,9 @@ candidates and a one-line rationale; never silently write what they didn't see.
 ## Contents
 
 - [Job-title expansion](#job-title-expansion)
-- [Keyword expansion for keyword_detection](#keyword-expansion-for-keyword_detection)
-- [Signal → agent mapping](#signal--agent-mapping)
-- [Populating watchlists](#populating-watchlists)
+- [Keyword expansion](#keyword-expansion)
+- [Signal → template mapping](#signal--template-mapping)
+- [Populating lists](#populating-lists)
 - [Account curation](#account-curation)
 
 ## Job-title expansion
@@ -20,24 +20,24 @@ generate four directions and read them back for the customer to trim:
 1. **Synonyms** — the same role under different names. _VP Sales → VP of Revenue, Chief Revenue
    Officer, Head of Sales, Commercial Director._
 2. **The seniority ladder** — the same function above and below. _Sales Director, Head of Sales,
-   Sales Manager_ — then ask where the budget actually sits so you set `seniority` correctly.
+   Sales Manager_ — then ask where the budget actually sits so you set `seniorities` correctly.
 3. **Adjacent functions that share the pain** — RevOps, Sales Enablement, Sales Operations for a
    sales-tooling product.
 4. **Exclusions** — the titles a broad match will wrongly catch. _"Sales" catches Sales
-   \_Development_ Reps and retail "Sales Associates"\_ → put those in `exclude_job_title`.
+   \_Development_ Reps and retail "Sales Associates"\_ → put those in `excluded_job_titles`.
 
 > **Localization:** if the persona targets non-English geographies, keep the seed titles in
 > English — Sillage translates titles per language downstream. Your job is the _variant set_, not
 > the translation.
 
 **Worked example — "we sell to marketing teams":**
-`job_title`: Marketing Director, VP Marketing, CMO, Head of Marketing, Head of Growth, Demand
-Generation Manager, Growth Lead · `exclude_job_title`: Marketing Intern, Marketing Assistant ·
-`seniority`: head, director, vp, c_suite.
+`job_titles`: Marketing Director, VP Marketing, CMO, Head of Marketing, Head of Growth, Demand
+Generation Manager, Growth Lead · `excluded_job_titles`: Marketing Intern, Marketing Assistant ·
+`seniorities`: head, director, vp, c_suite.
 
-## Keyword expansion for keyword_detection
+## Keyword expansion
 
-A `keyword_detection` agent watches LinkedIn posts. Users typically type their _product name_ and
+"Mentioned keywords on LinkedIn" (`mentioned-keywords-on-linkedin`) watches LinkedIn posts. Users typically type their _product name_ and
 stop — which catches almost nothing, because buyers don't post your brand, they post their
 **pain** and their **triggers**. Derive keywords from four veins:
 
@@ -59,38 +59,44 @@ tune after the first run.
 > Propose 8–12 candidates across the four veins, grouped, with rationale. Let the customer delete
 > the ones that feel off — that cut is where their domain knowledge earns its keep.
 
-## Signal → agent mapping
+## Signal → template mapping
 
-Map each buying signal the customer named (Wave 4 / Wave 5) to the agent that catches it. The
-Sillage MCP `create_agent` exposes these types:
+Map each buying signal the customer named (Wave 4 / Wave 5) to the catalogue template that catches
+it. Recognise templates by their stable `key`; always confirm with `get_signal_templates` (only
+`status: live` can be set up, and its `fields` are the real questions). The live catalogue today:
 
-| The customer says…                                 | Agent type                      | What it needs                                                      |
-| -------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------ |
-| "When someone posts about \<pain\> / our category" | `keyword_detection`             | expanded `tracking_keywords`                                       |
-| "When a target company hires for \<role/stack\>"   | `job_posting_keyword_detection` | `tracking_keywords` matched in job postings (roles, tools, stacks) |
-| "When a lead/champion changes jobs or is promoted" | `job_update`                    | nothing — name only; tracks the workspace's mapped contacts        |
-| "Track our competitors' companies"                 | `competitor`                    | a competitor watchlist (auto-created)                              |
-| "Track our partners"                               | `partner`                       | a partner watchlist                                                |
-| "Track our existing customers (expansion)"         | `customer`                      | a customer watchlist                                               |
-| "Track these creators our buyers follow"           | `influencer`                    | an influencer-profile watchlist                                    |
-| "Track our champions / advocates"                  | `champion`                      | a champion-profile watchlist                                       |
+| The customer says…                                                 | Template `key`                                     | What it needs                                                           |
+| ------------------------------------------------------------------ | -------------------------------------------------- | ----------------------------------------------------------------------- |
+| "When someone posts about \<pain\> / our category"                 | `mentioned-keywords-on-linkedin`                   | expanded `keywords`                                                     |
+| "When someone mentions us"                                         | `mentioned-my-brand`                               | nothing — `keywords` default to your domain                             |
+| "When someone mentions a competitor"                               | `mentioned-competitor-brand-on-linkedin`           | `keywords`, or a competitor list (keywords default to its names)        |
+| "When people engage with our team's posts"                         | `engaged-with-my-content-on-linkedin`              | nothing — uses the built-in "All my employees" list                     |
+| "When prospects engage with our competitors"                       | `engaged-with-competitors-on-linkedin`             | a `competitor` list                                                     |
+| "When prospects engage with our partners"                          | `engaged-with-my-partners-on-linkedin`             | a `partner` list                                                        |
+| "When prospects engage with creators our buyers follow"            | `engaged-with-influencers-in-my-space-on-linkedin` | an `influencer` list                                                    |
+| "When a champion changes jobs or is promoted"                      | `champion-joined-a-new-company-or-promoted`        | a `champion` list (members can carry `company`)                         |
+| "When decision-makers join or get promoted at our target accounts" | `job-change`                                       | nothing, persona job titles by default (known contacts: champion)       |
+| "When a target company's job offers mention \<stack\>"             | `mentioned-keywords-in-their-job-offers`           | `keywords` (roles, tools, stacks); account monitoring only              |
+| "When a target company hires for the roles we serve"               | `hiring-for-roles-my-product-serves`               | persona job titles by default, or `job_titles`; account monitoring only |
 
-These eight are the **entire** set — there is no "employee-engagement" or auto-derived agent. If a
-customer asks for one, say so plainly rather than inventing it.
+Everything else in the catalogue (funding, tech adoption, headcount growth, website visits…) is
+`coming_soon` — say so plainly rather than inventing a workaround. Every setup also needs `scopes`:
+`account_monitoring` (your key accounts) and/or `discovery` (beyond them, priced per signal found).
 
-Pick the **one or two highest-signal** agents to start — usually a `keyword_detection` agent off
-the expanded keywords plus one watchlist agent off their competitors or influencers. More agents
-is not better; signal quality is. Add the rest once the first detections come back and the
-customer trusts the output.
+Start with **3 high-signal** setups (`signal_setups` reads `warning` below 3), usually the keyword
+template off the expanded keywords, `job-change`, and one list template off their competitors or
+influencers. More setups is not
+better; signal quality is. Add the rest once the first detections come back and the customer trusts
+the output.
 
-## Populating watchlists
+## Populating lists
 
-A watchlist agent (`competitor` / `partner` / `customer` / `influencer` / `champion`) is only as good
-as the list you hand it. Critically, **the agent does not discover the list for you** — it detects
-interactions with the entities you supply, nothing more. It will not mine the ingested content to tell
-you who a prospect's partners or tech vendors are.
+A list signal (competitor / partner / influencer / champion) is only as good as the list you hand it.
+Critically, **nothing is created or discovered for you** — the list must exist before the signal, and
+the signal detects interactions with the entities you supply, nothing more. It will not mine the
+ingested content to tell you who a prospect's partners or tech vendors are.
 
-So populate a watchlist the same way you expand keywords and titles: **propose 8–12 named candidates
+So populate a list the same way you expand keywords and titles: **propose 8–12 named candidates
 from your own market knowledge, grouped with a one-line rationale, then let the customer cut.** For a
 UK-hospitality payments seller you already know the rivals (Dojo, Zonal, SumUp…) and the ecosystem
 (Deliveroo, OpenTable, Lightspeed…) — offer that list; don't go looking for it in the data.
@@ -100,18 +106,18 @@ Two hard rules, both from watching this go wrong:
 - **Never regex-mine the corpus to "find" partners or a tech stack.** It's slow, expensive, and the
   data isn't shaped for it (company-page posts are largely empty). Propose from knowledge instead.
 - **Never infer expected signal yield from content volume.** "This account has 4,000 posts, so the
-  Partner agent will fire 20 times" is fabricated — yield depends on real interactions, not corpus
+  Partner signal will fire 20 times" is fabricated — yield depends on real interactions, not corpus
   size. Don't promise a number, and never contradict a check you just ran to justify an action.
 
-Resolve entities by **LinkedIn company URL** where you can — a raw domain bounces on ambiguous or
-un-enrichable companies (real snag: `meandu.com`, `zonal.co.uk`, `dojo.tech` all failed to resolve by
-domain and had to be re-added by URL). Confirm the URL up front and skip the round-trip.
+Add members by **LinkedIn company URL** where you can — a raw domain bounces on ambiguous or
+unresolvable companies (`multiple_domain_matches`, `domain_not_resolved`; real snag: `meandu.com`,
+`zonal.co.uk`, `dojo.tech` had to be re-added by URL). Confirm the URL up front and skip the round-trip.
 
 ## Account curation
 
 A target account only yields signals if it (or its people) are **active on LinkedIn**. Expect a large
 share of any raw target list to be silent — in practice a handful of accounts drive most detections.
 Prefer active, multi-site brands that post regularly over dormant ones. But **don't delete an account
-just because `get_contents` shows zero** — confirm it's genuine inactivity, not a coverage gap that an
-`enrich_company` run would fill (see `sillage-manage-workspace` → "Troubleshoot — few or zero
-signals").
+just because `get_contents` shows zero** — confirm it's genuine inactivity, not an account that is
+still being prepared, unmonitored, or has no mapped people (see `sillage-manage-workspace` →
+"Troubleshoot — few or zero signals").

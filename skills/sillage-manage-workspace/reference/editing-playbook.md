@@ -6,62 +6,69 @@ then apply the single right fix. Read `write-semantics.md` first — it's what k
 ## Step 1 — snapshot
 
 ```
-get_persona()            # the current ICP
-get_agents()             # agents: types, enabled, keywords
-list_watchlists()        # lists and how populated they are
-read_top_account_list()  # the real target accounts (NOT get_top_accounts)
-get_setup_state()        # the four readiness flags
+get_setup_state()            # the checklist + recommended_next_tool
+get_personas()               # every business unit and its targeting
+list_lists()                 # lists: type, member/monitored counts, persona_ids
+get_signal_setups()          # setups: template, parameters, status, last_detected_at
+get_account_monitoring()     # what is paid for, what is not covered
 ```
 
 ## Step 2 — diff each axis
 
 For each axis, call it **match** (leave it), **mismatch** (fix it), or **missing** (add it):
 
-| Axis            | Read with               | Mismatch looks like…                                       | The one fix                                                                               |
-| --------------- | ----------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Persona         | `get_persona`           | wrong/narrow titles, seniority, industry, geo              | merge into the full object → `upsert_persona`; then re-`enrich_company` affected accounts |
-| Target accounts | `read_top_account_list` | missing target companies, or off-ICP ones present          | `add_top_accounts` (append) / `remove_top_accounts` (by ids or identifiers)               |
-| Coverage        | `list_company_mappings` | target companies with no mapped people                     | `enrich_company` by **domain**, poll to `completed`                                       |
-| Watchlists      | `list_watchlists`       | a needed list absent or empty                              | `create_watchlist` (right type) + `add_watchlist_entities`                                |
-| Agents          | `get_agents`            | needed signal has no agent / agent paused / stale keywords | `create_agent`, or `configure_agent` (keywords/enabled), or `bind_agent_watchlist`        |
+| Axis          | Read with                                               | Mismatch looks like…                                          | The one fix                                                                           |
+| ------------- | ------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Persona       | `get_personas`                                          | wrong/narrow titles, seniority, industry, geo; no country     | `update_persona` (send full arrays for the lists you change)                          |
+| Key accounts  | `list_lists` → `list_members` (customer/prospect)       | missing target companies, or off-ICP ones present             | `add_list_members` / `remove_list_member`                                             |
+| Monitoring    | `get_account_monitoring`, `list_members` → `monitoring` | key accounts not monitored, or `not_covered`                  | `update_list` / `set_account_monitoring` (billed — confirm); top up for `not_covered` |
+| Lists         | `list_lists`                                            | a list a signal needs is absent or empty                      | `create_list` (right type, `persona_ids`) + `add_list_members`                        |
+| Signal setups | `get_signal_setups`, `get_setup_state`                  | needed kind missing, setup paused, stale keywords, wrong list | `create_signal_setup`, `configure_signal_setup`, or recreate-then-delete              |
+
+For "missing" signal setups, `checklist.signal_setups.missing_priority_types` lists which of the 3
+priority keys (`job-change`, `engaged-with-competitors-on-linkedin`, `mentioned-keywords-on-linkedin`)
+aren't set up yet; a priority key absent from it already runs, even if `get_signal_setups` doesn't
+show it. For any other template, `get_signal_templates(tags: ["not_set_up"], persona_id)` lists
+what that persona hasn't tried yet.
 
 ## Step 3 — patch, then make it surface
 
-Apply the fix, then re-trigger whatever turns the change into results:
-
-- Persona or coverage change → `enrich_company` the affected accounts (coverage doesn't auto-refresh).
-- Keyword/agent change → `launch_signal_run` and poll `get_signal_run`.
-- Confirm with `get_setup_state` that the readiness flags are where you expect.
-
-> **Don't delete-and-recreate to "refresh."** Every edit below has an in-place tool — use it. Tearing
-> down agents, accounts, or the persona and rebuilding churns ids, orphans auto-spawned watchlists, and
-> re-enqueues ingestion for nothing (detail in `write-semantics.md` → "Edit in place").
+- Signal setup change → `launch_signal_run(signal_setup_id)`, poll `get_signal_run`.
+- Accounts or monitoring change → poll `get_requests_status` until those accounts are no longer listed.
+- Confirm with `get_setup_state` that every dimension reads where you expect.
 
 ## Recipes for the common edits
 
-**Widen the persona (surface more decision-makers).** `get_persona` → add the new titles/seniority
-into the full arrays → `upsert_persona` → `enrich_company` the target accounts again so their coverage
-is rebuilt against the wider ICP. Widening the persona and re-mapping is the lever that surfaces buyers
-who were previously invisible — not adding keywords.
+**Widen the persona (surface more decision-makers).** `get_personas` → append the new titles /
+seniorities to the full arrays → `update_persona(persona_id, job_titles: [...])`. Widening the persona
+is the lever that surfaces buyers who were invisible — not adding keywords. Setups with
+`use_persona_job_titles: true` pick the new titles up at their next run.
 
-**Add a competitor to track.** Is there a `competitor` watchlist? If not, `create_watchlist(type:
-competitor)` (or let `create_agent(type: competitor)` make one). `add_watchlist_entities` with the
-competitor's LinkedIn URL (a raw domain can bounce on ambiguous companies). To also get the people at
-that competitor, `enrich_company` its domain.
+**Add a business unit.** Only when the user asks for a separate team/line. `create_persona` with its
+own `job_titles` + `locations`; a 403 means business units aren't on (Sillage enables them on
+request). Then attach its key-account lists (`create_list` / `update_list` with `persona_ids`) and set
+up its signals with `persona_id`.
 
-**Add / remove target accounts.** `add_top_accounts` (by domain) to append; poll
-`get_top_account_list_status`. To drop accounts, read ids from `read_top_account_list` then
-`remove_top_accounts(ids)` — or pass `identifiers` (domains / LinkedIn URLs) when you don't have ids.
+**Add a competitor to track.** Find a `competitor` list (`list_lists(type: "competitor")`) or create
+one, then `add_list_members` with the competitor's LinkedIn URL. If no setup watches it yet, create
+"Engaged with competitors on LinkedIn" (`engaged-with-competitors-on-linkedin`) with that `list_id`.
+"Mentioned competitor brand on LinkedIn" defaults its keywords to your competitor lists' names.
 
-**Tune keywords.** `get_agents(agent_id, detailed)` to see the current set → `configure_agent` with the
-new `tracking_keywords`. Quote generic phrases to cut noise, leave niche terms bare (the quoting rule
-is in `sillage-onboarding`'s `reference/expansion-playbook.md`). Then `launch_signal_run` to test the new set.
+**Add / remove target accounts.** `add_list_members` on the customer/prospect list (read `errors`).
+New members of a monitored list are monitored (and billed) automatically. To drop one, read its
+`id` from `list_members`, then `remove_list_member`.
 
-**Pause / resume an agent.** `configure_agent(agent_id, enabled: false)` to pause, `true` to resume.
+**Tune keywords.** `get_signal_setups(signal_setup_id)` to see the current `parameters.keywords` →
+`configure_signal_setup(signal_setup_id, parameters: { keywords: [...] })` with the full new set.
+A bare keyword matches broadly, a "quoted" one the exact phrase only: quote generic phrases, leave
+niche terms bare. Then `launch_signal_run` to test it.
 
-**Re-point a watchlist agent.** `bind_agent_watchlist(agent_id, watchlist_id)` to swap the list it
-watches; both fields null to unlink.
+**Pause / resume a signal.** `configure_signal_setup(signal_setup_id, status: "disabled")`, then
+`"enabled"` to resume. Stop the weekly run without pausing: `schedule: null`.
 
-**Fix a half-configured workspace.** Start from `get_setup_state`: the first false flag is the next
-job — no persona → set it; no accounts → add them; not ingested → poll (or re-add / re-enrich); no
-content → check agents exist and have been run.
+**Watch another list / move to another persona.** Frozen fields. `create_signal_setup` with the new
+`list_id` or `persona_id` and the same answers (copy `parameters` from `get_signal_setups`), confirm
+it, then `delete_signal_setup` the old one (confirm it by name with the user).
+
+**Fix a half-configured workspace.** Start from `get_setup_state` and follow each non-`ok`
+dimension's `recommended_next_tool` in order: persona → accounts → signal setups → contents.
