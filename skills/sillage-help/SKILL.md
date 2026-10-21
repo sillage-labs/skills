@@ -1,18 +1,17 @@
 ---
 name: sillage-help
 description: >
-  Explains the whole logic of a Sillage workspace and the vocabulary behind it — how the persona,
-  target accounts, coverage/mapping, watchlists, agents, signal runs, detections and content fit
-  together, and what every term means. The reference the other skills assume you already have. Use
-  when the model of the product is unclear, before setting up or editing a workspace, or when a
-  result doesn't make sense. Use when you hear: "how does Sillage work", "explain the logic",
-  "what's a persona", "how do agents work", "what's the difference between a watchlist and the
-  target list", "what does coverage mean", "why only company keywords", "what's a signal", "glossary".
+  Explains the whole logic of a Sillage workspace and the vocabulary behind it: how business units
+  (personas), key-account lists, account monitoring, the signal catalogue, signal setups, runs,
+  detections and content fit together, and what every term means. The reference the other skills
+  assume you already have. Use when the model of the product is unclear, before setting up or
+  editing a workspace, or when a result doesn't make sense. Use when you hear: "how does Sillage
+  work", "what's a signal setup", "what does monitoring cost", "glossary".
 metadata:
   owner: pf@getsillage.com
-  version: 1.2.0
+  version: 2.0.0
   model-tier: sonnet
-  provider: Sillage MCP v2 (https://api.getsillage.com/api/mcp/v2)
+  provider: Sillage MCP v2 (https://api.getsillage.com/api/mcp/v2), REST API v3
   pairs-with: [sillage-onboarding, sillage-manage-workspace]
 ---
 
@@ -23,116 +22,128 @@ about to need what you sell, and turns those moments into leads and ready-to-use
 is the map of _how the pieces connect_ and _what each word means_. It doesn't do anything — it makes
 the doing (with `sillage-onboarding` and `sillage-manage-workspace`) make sense.
 
-Read this when the product's model is fuzzy, when a number surprises you, or before you edit a
-workspace and need to know what a change actually moves.
-
 ## The one thing to understand first
 
-Everything hangs off **one chain**. Each stage feeds the next, and a weak early stage quietly starves
-every stage after it:
+Everything hangs off **one chain**. A weak early stage quietly starves every stage after it:
 
 ```
-Persona (your ICP)            ── defines who and what companies count
+Business unit (persona)       ── who you sell to: job titles, locations, industries…
       │
-Target Account List (TAL)     ── the companies you want to sell to
+Key accounts                  ── companies on your customer / prospect LISTS
       │
-      ├─ enrich_company ─►  Coverage / Company Mapping   ── the PEOPLE at each company who match the persona
+      ├─ account monitoring ─►  paid per account, per business unit, per month
+      │                         → account mapping (the people at each account who match the persona;
+      │                           adding companies to a customer / competitor / partner list starts it too)
       │
-Watchlists                    ── separate lists you MONITOR (customers, competitors, partners, influencers, champions)
+Signal catalogue (templates)  ── every kind of signal Sillage can detect, with its questions and price
       │
-Agents                        ── saved searches; each is one detection rule (keywords, job changes, or a watchlist)
+Signal setups                 ── a template you answered, for one business unit (+ a list when it watches one)
       │
-      └─ launch a Signal Run ─►  the agent actually goes and looks
-                                     │
-                                     ▼
-              Signal Detections  +  Workspace Contents   ── what it found: the events, and the raw posts/articles behind them
+      └─ signal run  ─►  weekly on schedule, or launched by hand
+                             │
+                             ▼
+              Signals (detections)  +  Contents   ── what it found, and the raw posts/articles behind it
 ```
 
-So: **persona → target accounts → coverage → agents → signal runs → detections + content.** If the
-persona is thin, the wrong companies qualify. If a company has no coverage, agents that rely on its
-people find nobody. If no agent ever runs, there are no detections no matter how good the setup is.
+So: **persona → key accounts → monitoring/mapping → setups → runs → signals + content.** No
+persona job title or location → most setups are refused. No monitored accounts → account-monitoring
+signals have nobody to watch. No run → no signals, however good the setup.
+
+## Templates, setups, runs
+
+- **Signal template** — one entry of the catalogue (`get_signal_templates` / `GET /v3/signal-templates`).
+  Its stable `key` (e.g. `job-change`, `mentioned-keywords-on-linkedin`) names it; its `setup.fields`
+  say exactly which `parameters` to fill. Only `status: live` templates can be set up — the full list
+  is in `reference/signal-taxonomy.md`.
+- **Signal setup** — a template you answered (`create_signal_setup`). It belongs to **one business
+  unit** (`persona_id`, fixed for life; champion and job-offer setups may have none) and, for templates
+  that watch a list (competitors, partners, influencers, champions, your employees), to **one list you
+  name** (`list_id`, fixed for life; no list is ever created for you, and the content-engagement
+  template defaults to "All my employees"). The same template can be set up several times (e.g. one per keyword
+  set). Edits merge (`configure_signal_setup`); to change the list or persona, create a new setup and
+  delete the old one.
+- **Signal run** — one execution. A setup with `schedule: "weekly"` runs by itself every week; a manual
+  one (`schedule: null`) runs only when you call `launch_signal_run`. A run fans out per key account and
+  ends `completed` or `failed`; interaction signals start one run per direction (inbound / outbound).
+
+## Where a signal looks — `discovery` vs `account_monitoring`
+
+Every setup answers `scopes`, and it changes both what you find and what you pay:
+
+| Scope                | Looks at                                        | Paid                                              |
+| -------------------- | ----------------------------------------------- | ------------------------------------------------- |
+| `account_monitoring` | your **key accounts** (customer/prospect lists) | per monitored account, per month — not per signal |
+| `discovery`          | everyone **outside** your key accounts          | per signal found, at the template's price         |
+
+Creating or editing a setup charges nothing. Monitoring is switched on per account (or per whole
+list), not per setup.
+
+## Signal buckets and account monitoring
+
+A **bucket** (`essential`, `standard`, `advanced`) is the tier that prices account monitoring: a
+cost per key account, per month, per business unit. Tiers are cumulative. **Only `essential` exists
+in practice today** — every priced template sits in it. Neither the MCP nor the REST API lists the buckets
+themselves: `get_signal_templates` shows each template's `pricing` (bucket + credits) and
+`get_account_monitoring` the price per account and the monthly cost of what you monitor.
+
+An account's **monitoring status**, per business unit:
+
+| Status                | Means                                                                          |
+| --------------------- | ------------------------------------------------------------------------------ |
+| `monitored`           | Paid month running (or the workspace isn't billed).                            |
+| `not_covered`         | Should be monitored but the renewal couldn't be paid — top up, retried hourly. |
+| `monitored_elsewhere` | Monitored in another business unit only.                                       |
+| `not_monitored`       | Not monitored here (`covered_until` shows when a stopped month ends).          |
+
+Monitoring costs credits and is charged right away: always tell the user the cost and ask before
+turning it on. Stopping never refunds the month already paid.
 
 ## The two flows people confuse
 
-The single most common confusion (worth internalizing):
+- **Account mapping** = resolving a _company_ to its _people_ — the employees whose profiles match the
+  persona. Adding companies to a customer, competitor or partner list starts it; on key accounts,
+  monitoring pays for it. No mapping → no decision-makers to track there.
+- **Content** = the company page's own LinkedIn activity. It exists whether or not anyone is mapped
+  (when the plan includes content).
 
-- **Coverage / mapping** = resolving a _company_ to its _people_ — the employees whose LinkedIn
-  profiles match your persona. This is what `enrich_company` builds. No coverage → no decision-makers
-  to track for that company.
-- **Content** = the _company page's own_ LinkedIn activity (its posts and the comments under them).
-  This exists whether or not any people are mapped.
-
-A company can have rich content and **zero mapped people**, or people mapped and **no content**. When
-someone says _"we only get company keywords, never the decision-makers"_, that's this: content is
-flowing but coverage is empty. The fix is coverage (`enrich_company` with the company's **domain**),
-not more keywords. Full definitions in `reference/glossary.md`. Few or zero signals almost always trace
-back here — `sillage-manage-workspace` has the ordered "Troubleshoot — few or zero signals" checklist.
-
-## Agents, runs, and what comes out
-
-An **agent** is a saved search of one **type**:
-
-- `keyword_detection` — watches LinkedIn posts for your keywords.
-- `job_posting_keyword_detection` — watches the **job postings** your tracked companies publish for your keywords.
-- `job_update` — watches for people changing jobs / getting promoted.
-- `competitor` / `partner` / `customer` — company **watchlist** agents (monitor a list of companies you supply).
-- `influencer` / `champion` — profile **watchlist** agents (monitor a list of people you supply).
-
-A watchlist agent detects interactions with the entities **you put on the list** — it never discovers
-who a company's competitors, partners, or tech vendors are from the corpus. You build the list from
-market knowledge; the agent watches it.
-
-Creating an agent doesn't find anything by itself. You **launch a signal run** — that's the agent
-going out to look. A keyword or job agent produces **one run**; a watchlist agent produces **two**
-(inbound = someone engages the watched entity; outbound = the watched entity engages a target). One
-run fans out to one job per target account.
-
-What a run produces is read two ways — the same substrate, two lenses:
-
-- **Signal Detections** — the event feed: "this person did this thing", keyed by agent / signal type.
-- **Workspace Contents** — the raw corpus behind those events (the posts, comments, articles),
-  filterable by company, person, and type.
-
-The full list of the detection types and the content types is in `reference/signal-taxonomy.md`.
+So _"we only get company keywords, never the decision-makers"_ = content flows, mapping is empty. The
+fix is monitoring the account (and a persona with job titles + locations), not more keywords.
+`sillage-manage-workspace` has the "few or zero signals" checklist.
 
 ## When signals come back — lead with the outreach brief
 
-Detections are the means, not the end. The moment a run returns signals, the useful move is to turn
-them into a short **action brief**, not to dive back into config:
-
-1. **Rank accounts by signal density** — a handful will dominate; those are the hot accounts.
+1. **Rank accounts by signal density** — a handful dominate; those are the hot accounts.
 2. **Name the person and the signal that qualifies them** — "Luigi, GM — 12 posts about a new site =
-   active expansion", not just "this account had activity".
-3. **Give a per-account approach angle grounded in that specific signal** — the outreach writes itself
-   from the trigger.
+   active expansion".
+3. **Give a per-account approach angle grounded in that signal.** Read `get_signal_playbook` for the
+   signal's template `key` before interpreting it.
 
-Keep config tuning (lookback, more keywords, more agents) **secondary** — surface the brief first, then
-optimize. Burying the one hot lead under a wall of "you could also add these agents" wastes a good run.
+Keep config tuning secondary — surface the brief first.
 
-## Is a workspace even set up? — the four flags
+## Is a workspace set up? — the setup-state checklist
 
-`get_setup_state` answers this in one call, and its four booleans mirror the chain above:
+`get_setup_state` (`GET /v3/setup-state`) returns a `checklist` of four dimensions, each with a
+`status` (`ok` / `warning` / `blocked`), a plain `message` and, when there's a next step,
+`recommended_next_tool`:
 
-| Flag                 | Means                                                           |
-| -------------------- | --------------------------------------------------------------- |
-| `persona_set`        | An ICP exists.                                                  |
-| `list_uploaded`      | The target account list has companies in it.                    |
-| `ingestion_complete` | Those accounts finished processing (coverage + content pulled). |
-| `has_contents`       | There is collected content to read.                             |
+| Dimension       | Key fields                        | Done when                                   |
+| --------------- | --------------------------------- | ------------------------------------------- |
+| `persona`       | `job_titles_set`, `locations_set` | both true — they unblock mapping and setups |
+| `accounts`      | `count`                           | ≥ 1 account on a customer/prospect list     |
+| `signal_setups` | `count`, `missing_priority_types` | the priority template `key`s are set up     |
+| `contents`      | `has_contents`                    | content generated (`blocked` = not in plan) |
 
-All four true = the workspace is live. Any false = that's the next thing to fix. `sillage-manage-workspace`
-turns this into a loop.
+A key not in `missing_priority_types` already runs — never set it up again. Every dimension `ok` =
+live.
 
 ## When NOT to use
 
-- You want to _do_ something (set up, edit, tune) → this skill only explains; use `sillage-onboarding` to shape
-  targeting or `sillage-manage-workspace` to write and edit it.
-- You need the exact fields/enums for a persona or agent call → `sillage-onboarding`'s
-  `reference/what-sillage-needs.md` and `sillage-manage-workspace`'s `reference/tool-map.md` are the precise
-  specs; this skill is the mental model, not the API surface.
+- You want to _do_ something → `sillage-onboarding` (shape targeting) or `sillage-manage-workspace`
+  (write and edit).
+- You need exact fields/enums → `sillage-manage-workspace`'s `reference/tool-map.md` or
+  `get_signal_templates`; this skill is the mental model, not the API surface.
 
 ## Where to go next
 
 - **Glossary** — every term, defined: `reference/glossary.md`.
-- **Signal & content taxonomy** — the full detection and content type list: `reference/signal-taxonomy.md`.
-- **To act** — shape inputs with `sillage-onboarding`; write and edit with `sillage-manage-workspace`.
+- **Signal catalogue & content types**: `reference/signal-taxonomy.md`.
