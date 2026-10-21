@@ -1,173 +1,158 @@
-# Sillage Partner API — endpoint catalog
+# Sillage Partner API — endpoint catalog (v3)
 
-Base URL `https://api.getsillage.com` · Auth `Authorization: Bearer $SILLAGE_API_KEY` (partner
-master key `mk_live_…` — the key alone identifies the partner) · Errors: RFC 9457
-`application/problem+json` · IDs: numeric integers, environment-specific · Dates: ISO 8601, UTC ·
-Every response carries `X-Request-Id` (quote it when reporting an issue) · Live spec: Swagger UI
-`/api/v2/partner/docs`, raw JSON `/api/v2/partner/docs/spec`.
+Base URL `https://api.getsillage.com` · Auth `Authorization: Bearer $SILLAGE_MASTER_KEY` (partner
+master key `mk_live_…` — the key alone identifies the partner) · Every answer `{ data }` · Errors:
+RFC 9457 `application/problem+json`, `type: about:blank`, `errors` keyed by field on `422` · IDs:
+numeric, environment-specific (except your `partner_workspace_id`) · Dates: ISO 8601, UTC · Live
+spec: Swagger UI `/api/v3/partner/docs`, raw JSON `/api/v3/partner/docs/spec`.
 
-Path shorthand: `…` = `/api/v2/partner/workspaces/{partner_workspace_id}`.
-`{partner_workspace_id}` is the opaque id **you** assigned at creation — never a numeric id.
+Path shorthand: `…` = `/api/v3/partner/workspaces/{partner_workspace_id}` — the string id **you**
+assigned at creation, URL-encoded. Each route behaves like its direct-client twin in
+[`sillage-api`'s catalog](../../sillage-api/reference/endpoint-catalog.md); only the differences are
+spelled out here.
 
 ## Contents
 
-- [Identity & workspaces](#identity--workspaces)
-- [Persona](#persona)
-- [Top account list](#top-account-list)
+- [Workspaces](#workspaces)
+- [Personas](#personas)
+- [Lists](#lists)
+- [Account monitoring](#account-monitoring)
+- [Signal templates & setups](#signal-templates--setups)
+- [Signal runs](#signal-runs)
+- [Signals](#signals)
+- [Leads & companies](#leads--companies)
 - [Account mapping](#account-mapping)
-- [Companies & leads](#companies--leads)
-- [Agents](#agents)
-- [Watchlists](#watchlists)
-- [Signals & signal runs](#signals--signal-runs)
-- [Contents](#contents-resource)
-- [Content requests](#content-requests)
+- [Contents & content requests](#contents--content-requests)
+- [Status & usage](#status--usage)
+- [Still v2 only](#still-v2-only)
 - [Enums](#enums)
 
-## Identity & workspaces
+## Workspaces
 
-| Method               | Path                         | Purpose                                                                                                                                                                      |
-| -------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET                  | `/api/v2/partner/me`         | Auth check → `data.{id,name,slug}`                                                                                                                                           |
-| GET                  | `/api/v2/partner/workspaces` | List, newest first (`page`, `page_size`). Paginated — page through fully before concluding a workspace is missing; direct addressing by `partner_workspace_id` always works. |
-| POST                 | `/api/v2/partner/workspaces` | Create. Body: `partner_workspace_id` (req, unique per partner), `end_customer_email` (req), `name` (req), `domain` (opt — recommended).                                      |
-| GET / PATCH / DELETE | `…`                          | Read · update (PATCH accepts **only `name`**) · permanent delete                                                                                                             |
-| POST                 | `…/archive`                  | Reversible archive (stops signals, keeps data) → 204                                                                                                                         |
-| GET                  | `…/ping`                     | Key valid + workspace active                                                                                                                                                 |
+| Method | Path                         | Notes                                                                                                                                                                                                                                                                                                        |
+| ------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| POST   | `/api/v3/partner/workspaces` | Create. Body (all required): `partner_workspace_id` (1–255, unique among yours, deleted included; no `/ ? #` or spaces), `name`, `domain` (hostname), `owner_email` (gets admin access in the app) → `201`. `409` duplicate id, live workspace on that domain (add a persona instead), or concurrent create. |
+| GET    | `/api/v3/partner/workspaces` | List (`page`, `page_size`, `include_archived`, `include_deleted`).                                                                                                                                                                                                                                           |
+| GET    | `…`                          | One workspace: `partner_workspace_id`, `name`, `domain`, `archived`, `created_at`.                                                                                                                                                                                                                           |
+| PATCH  | `…`                          | `{name?, archived?}`. `archived: true` pauses (no scheduled runs, content or weekly email; API and manual runs keep working). `domain` cannot change.                                                                                                                                                        |
+| DELETE | `…`                          | Deletes; stops resolving everywhere. The id stays yours.                                                                                                                                                                                                                                                     |
+| POST   | `…/restore`                  | Brings a deleted workspace back.                                                                                                                                                                                                                                                                             |
 
-## Persona
+## Personas
 
-| Method | Path        | Notes                                                                                                                                                |
-| ------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `…/persona` | `data` = persona or `null` if never set                                                                                                              |
-| PUT    | `…/persona` | Create/replace. Fields (all opt): `job_title[]`, `exclude_job_title[]`, `location[]`, `headcount[]`, `industry[]`, `seniority[]`, `additional_info`. |
+| Method      | Path                      | Notes                                                                                                                                                                                                          |
+| ----------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET / POST  | `…/personas`              | List · create. Fields: `name`, `job_titles[]`, `excluded_job_titles[]`, `locations[]` (country names), `headcounts[]`, `industries[]`, `seniorities[]`, `exclusion_criteria[]`, `tag`. Unknown fields → `422`. |
+| GET / PATCH | `…/personas/{persona_id}` | Read · update the sent fields only.                                                                                                                                                                            |
 
-Persona rules:
+Signal setups need `job_titles` **and** `locations` on their persona.
 
-- **Full replace, not merge** — omitted fields become unset. Always `GET` → merge → `PUT` the full
-  object.
-- **Unknown fields are silently dropped** — a typo'd body returns 200 and the persona is replaced
-  with only what validated. Read the persona back after writing it.
-- **Always include `location`** (country names; regions like "EMEA" are not guaranteed to resolve).
-  Account mapping scopes its people search by it; enrichment requests without it fail.
+## Lists
 
-## Top account list
+| Method             | Path                                           | Notes                                                                                                                                                                                                                                                                                |
+| ------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| POST               | `…/lists`                                      | `{type, name, description?, tier?, persona_ids?, signal_buckets?}`. `tier` and `signal_buckets` on `customer`/`prospect` only.                                                                                                                                                       |
+| GET                | `…/lists`                                      | `type?`, `persona_id?`, `include_archived?`.                                                                                                                                                                                                                                         |
+| GET / PUT / DELETE | `…/lists/{kind}/{list_id}`                     | `kind` = `company` \| `profile`. PUT: `name`, `description`, `archived`, `persona_ids`, `signal_buckets`. DELETE refused while a setup watches the list, for "All my employees", and for the last list of a tier.                                                                                                                             |
+| GET / POST         | `…/lists/{kind}/{list_id}/members`             | Add 1–100 `{members:[{linkedin_url}\|{linkedin_handle}\|{domain}]}` (`domain` on company lists only). **Partial success**: `data` = added, `errors[]` per member (`multiple_domain_matches`, `domain_not_resolved`, `resolution_failed`, `wrong_entity_type`, `invalid_identifier`). |
+| DELETE             | `…/lists/{kind}/{list_id}/members/{member_id}` | Remove one member.                                                                                                                                                                                                                                                                   |
 
-| Method     | Path                                                   | Notes                                                                                                    |
-| ---------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| POST       | `…/top-account-list/accounts`                          | **Add** (merge), 1–10,000 items, each `{linkedin_url}` and/or `{domain}` → 202, ingestion queued (async) |
-| POST       | `…/top-account-list/accounts/remove`                   | Remove batch (idempotent) → `{deleted_count}`                                                            |
-| GET        | `…/top-account-list/count`                             | Counts **found** accounts only (unresolved excluded)                                                     |
-| GET / POST | `…/top-account-list`                                   | Read the list · **replace the whole list** (destructive — know which of add vs replace you're calling)   |
-| GET        | `…/top-account-list/status`                            | Ingestion status — poll until `completed`                                                                |
-| GET        | `…/top-account-list/accounts` · `…/accounts/not-found` | List found accounts · list misses                                                                        |
-| DELETE     | `…/top-account-list/accounts/{id}`                     | Remove one                                                                                               |
+No partner route for list restore or membership logs.
 
-A `domain` can occasionally fail to match without appearing in `not-found`. After ingestion, verify
-the accounts you care about are actually present; re-add any miss via its `linkedin_url`.
+## Account monitoring
+
+| Method | Path                            | Notes                                                                                                                                                           |
+| ------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `…/account-monitoring`          | Totals and cost (`persona_id?`).                                                                                                                                |
+| PUT    | `…/account-monitoring/accounts` | `{company_ids[] (1–1000), signal_buckets: ["essential"] \| null, persona_id?}` — **paid**. Answers `changed`, `already_in_state`, `refused`, `charged_credits`. |
+
+## Signal templates & setups
+
+| Method               | Path                      | Notes                                                                                                                                                                                                                                       |
+| -------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET                  | `…/signal-templates`      | Live catalogue (`include_coming_soon`, `category`, `scopes`, `tags`, `name`, `persona_id`).                                                                                                                                                 |
+| GET                  | `…/signal-templates/{id}` | `key`, `status`, `scopes`, `pricing`, `setup.fields` (JSON Schema + `x-label`, `x-hint`, `x-control`, `x-list-type`).                                                                                                                       |
+| POST                 | `…/signal-setups`         | `{signal_template_id, parameters, name?, schedule?: "weekly"\|null, persona_id?}` → `201`. `list_id` required when `setup.fields.required` lists it; nothing auto-created. `422` per field / `Persona incomplete`; `409` list of other personas, archived template. |
+| GET                  | `…/signal-setups`         | `persona_id?`.                                                                                                                                                                                                                              |
+| GET / PATCH / DELETE | `…/signal-setups/{id}`    | PATCH merges `{name?, status?, parameters?, schedule?, persona_id?}`; other list or persona → `409`.                                                                                                                                        |
+
+## Signal runs
+
+| Method | Path                 | Notes                                                                                                                                                                             |
+| ------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `…/signal-runs`      | `{signal_setup_id, parameters?: {lookback_days}}` → `202 {data:[runs]}` (directions + optional paid Discovery). `409` already running / disabled, `402` no credits for Discovery. |
+| GET    | `…/signal-runs`      | In-flight runs.                                                                                                                                                                   |
+| GET    | `…/signal-runs/{id}` | `status` `pending` → `in_progress` → `completed` \| `failed`; `metadata.failed.dropped_account_ids`.                                                                              |
+
+## Signals
+
+| Method | Path              | Notes                                                                                                                                                                                                                                                                           |
+| ------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `…/signals/query` | Cursor (`cursor`, `limit` 1–100). Filters: `signal_setup_id`, `signal_run_id`, `signal_type[]`, `signal_date_from/to`, `detected_at_from/to`, `company_ids[]`, `company_domain[]`, `company_linkedin_handle[]`, `company_linkedin_url[]`, `lead_id`, `countries[]`, `cities[]`. |
+| POST   | `…/signals/count` | Same filters → `data.total`.                                                                                                                                                                                                                                                    |
+| GET    | `…/signals/{id}`  | `signal_type`, `details`, `detected_at`, `signal_date`, `lead_id`, `company_id`, `signal_setup_id`, `source_url`, `author`, `excerpt`.                                                                                                                                          |
+| DELETE | `…/signals/{id}`  | Remove one detection.                                                                                                                                                                                                                                                           |
+
+## Leads & companies
+
+| Method      | Path               | Notes                                                                                     |
+| ----------- | ------------------ | ----------------------------------------------------------------------------------------- |
+| POST        | `…/leads/query`    | Cursor search (`sort`, `created_at_from/to`, company and location filters).               |
+| POST        | `…/leads/count`    | Same filters → `data.total`.                                                              |
+| GET / PATCH | `…/leads/{id}`     | Read a signal's `lead_id` · update `{status?, owner_email?}`.                             |
+| GET         | `…/companies/{id}` | Firmographics of a `company_id`; fields `null` until enriched. No partner company search. |
 
 ## Account mapping
 
-| Method | Path                              | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ------ | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `…/enrich-company-mapping`        | Start async mapping for one company. Body: exactly one primary identifier — `domain`, `linkedin_url`, or `linkedin_handle` (`domain`+`linkedin_url` may be combined to disambiguate). → 202 `{status, request_id, stage}` — `request_id` is a **content-request id** (poll it there), not a `mapping_id`. Errors: 402 no credits · 403 feature not enabled · 409 ambiguous domain (add a LinkedIn URL). Re-triggering an in-flight company dedupes to the existing request. |
-| GET    | `…/company-mappings`              | List materialized mappings (no profiles). `page`/`page_size` only — no status filter; each item has `status` (`in_progress` \| `complete`), filter client-side.                                                                                                                                                                                                                                                                                                             |
-| GET    | `…/company-mappings/{mapping_id}` | One mapping + `profiles[]`: `linkedin_url`, `position`, `first_name`, `last_name`, `email`, `phone_number`, `linkedin_headline`, `location{city,region,country}`, …                                                                                                                                                                                                                                                                                                         |
+| Method | Path                              | Notes                                                             |
+| ------ | --------------------------------- | ----------------------------------------------------------------- |
+| GET    | `…/company-mappings`              | `company_ids?`, `persona_id?`, `latest?`; each item has `status`. |
+| GET    | `…/company-mappings/{mapping_id}` | One mapping with its people.                                      |
 
-Note: `mapping_id`, `company_id`, and top-account ids are **different id spaces** — don't pass one
-where another is expected. To find a mapping from a domain, scan the company-mappings list.
+`mapping_id` and `company_id` are different id spaces.
 
-## Companies & leads
+## Contents & content requests
 
-| Method | Path               | Notes                                                                                                                                                                                         |
-| ------ | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `…/companies/{id}` | Resolve a `company_id` (from a signal or content item) into firmographics: name, domain, LinkedIn, locations, employee range, industries… Fields are `null` until enriched. Not a search API. |
-| GET    | `…/leads/{id}`     | Resolve a `lead_id` into a profile + company block. Payloads carry no email/phone.                                                                                                            |
+| Method | Path                       | Notes                                                                                                    |
+| ------ | -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| POST   | `…/contents/query`         | Cursor; `content_type[]`, dates, company filters, `lead_id`, `response_format`. Payload under `details`. |
+| GET    | `…/contents/{id}`          | One item.                                                                                                |
+| POST   | `…/content-requests/query` | Cursor; `type`, `status[]` (completed included).                                                         |
+| GET    | `…/content-requests/{id}`  | `status`, `label`, `persona_ids`.                                                                        |
 
-## Agents
+## Status & usage
 
-| Method             | Path                  | Notes                                                                                                                                                                                                                                                                                       |
-| ------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST               | `…/agents`            | Create. Body: `name` (1–100), `type` (see enum), `parameters` (per type), `watchlist_id` (opt, watchlist-bound types; omitted ⇒ a new empty watchlist is created and bound). Created `enabled:true` but with **no schedule** — it never runs on its own; fire it with `POST …/signal-runs`. |
-| GET                | `…/agents`            | List. `page_size` default 10, **max 25** (422 above — a lower cap than the other lists).                                                                                                                                                                                                    |
-| GET / PUT / DELETE | `…/agents/{agent_id}` | Read · partial update (`name`, `enabled`, `parameters`, `watchlist_kind`+`watchlist_id` — pass both `null` to unbind) · delete (already-detected signals are preserved)                                                                                                                     |
+| Method | Path                | Notes                                                                                          |
+| ------ | ------------------- | ---------------------------------------------------------------------------------------------- |
+| GET    | `…/setup-state`     | Checklist (`persona`, `accounts`, `signal_setups`, `contents`) with `recommended_next_route`.  |
+| GET    | `…/requests-status` | Everything in flight.                                                                          |
+| GET    | `…/usage`           | The workspace's billing events, cursor in the query string; each carries its invoice `status`. |
 
-Per-type `parameters`: `keyword_detection` → `tracking_keywords[]` (req) + `start_date` (opt) ·
-`job_posting_keyword_detection` → `tracking_keywords[]` (req; matched against job **title +
-description** of the top accounts' postings) · all other types → none.
+## Still v2 only
 
-Agent facts:
+| Method | Path                                                     | Purpose                                                   |
+| ------ | -------------------------------------------------------- | --------------------------------------------------------- |
+| GET    | `/api/v2/partner/me`                                     | Auth check → `data.{id,name,slug}`.                       |
+| GET    | `/api/v2/partner/workspaces/{id}/ping`                   | Key valid + workspace active.                             |
+| *      | `/api/v2/partner/workspaces/{id}/top-account-list/*`     | Legacy target account list (v3: customer/prospect lists). |
+| POST   | `/api/v2/partner/workspaces/{id}/enrich-company-mapping` | Paid one-company mapping launch.                          |
+| GET    | `/api/v2/partner/usage`                                  | Usage across all workspaces (v3: per-workspace `…/usage`). |
 
-- `tracking_keywords` matching is **semantic, not exact-phrase** — quotes don't force literal
-  matches; near-synonyms multiply signal counts without new content. One keyword per concept.
-- `agents[].last_run` is not populated by runs — poll the run, or query the signals, to judge one.
-- `job_update` is driven by the **workspace persona** (applied when accounts are mapped), not by
-  agent parameters, and fires on both arrivals and departures at your top accounts.
-
-## Watchlists
-
-| Method             | Path                                                      | Notes                                                                                                                                                                                                                                                                                                                         |
-| ------------------ | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST               | `…/watchlists`                                            | Create: `type` (immutable, derives `kind`), `title` (req), `description` (opt) → 201                                                                                                                                                                                                                                          |
-| GET                | `…/watchlists`                                            | List; optional `type` filter; `page_size` max 100                                                                                                                                                                                                                                                                             |
-| GET / PUT / DELETE | `…/watchlists/{kind}/{watchlist_id}`                      | `kind` = `company` \| `profile`. PUT: `title`/`description` only. DELETE → **409 while bound to an agent** (unbind first).                                                                                                                                                                                                    |
-| POST               | `…/watchlists/{kind}/{watchlist_id}/entities`             | Add 1–100. Each: `linkedin_url` \| `linkedin_handle` (preferred) \| `domain` (company lists only). **Partial-success**: 200 returns `data` (added) + `errors` (per-entity: `multiple_domain_matches`, `apollo_failed`, `resolution_failed`); if every entity failed → 422. Re-adding present members = 200 with empty `data`. |
-| GET                | `…/watchlists/{kind}/{watchlist_id}/entities`             | Paginate members (company lists → `name`; profile lists → `first_name`/`last_name`)                                                                                                                                                                                                                                           |
-| DELETE             | `…/watchlists/{kind}/{watchlist_id}/entities/{entity_id}` | Remove the membership link (the canonical company/profile is never deleted)                                                                                                                                                                                                                                                   |
-
-## Signals & signal runs
-
-| Method | Path                 | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| ------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| POST   | `…/signals/query`    | The list route (replaces the former `GET …/signals`). **Cursor pagination**: follow `meta.next_cursor` / `has_more`; `page`/`page_size` are ignored. Default window: last **90 days** (`signal_start_date`, cap 180). Body filters: `cursor`, `limit` (1–100, def 25), `signal_start/end_date`, `detection_start/end_date`, `agent_id`, `signal_run_id`, `company_id`, `company_domain` / `company_linkedin_handle` / `company_linkedin_url` (comma-separated OR). |
-| GET    | `…/signals/count`    | Same filters → `{total}`                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| GET    | `…/signals/{id}`     | One signal: `signal_type`, `data` (type-specific), `detected_at`, `signal_date`, `lead_id`, `company_id`, `agent_id`, `source_url`, `author`, `excerpt`                                                                                                                                                                                                                                                                                                            |
-| POST   | `…/signal-runs`      | On-demand run for **any** agent type (the run kind derives from the agent; `signal_key` is legacy — pass `"keyword"`). Body: `agent_id` (req), `signal_key` (req), `parameters` (req; `match_mode` `any` \| `all`, keyword agents only). → 202 with an **array** of `{signal_request_id, stage}` — watchlist-bound agents start **two** runs (inbound + outbound). Safe to retry: completed matches are not duplicated. Unknown `agent_id` → 404.                  |
-| GET    | `…/signal-runs/{id}` | Poll (`id` = `signal_request_id`) until `completed`, `completed_partial`, or `failed`; on partial/failed, `metadata.failed.dropped_account_ids` lists accounts that weren't scanned.                                                                                                                                                                                                                                                                               |
-
-## Contents (resource)
-
-| Method | Path               | Notes                                                                                                                                                                       |
-| ------ | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `…/contents/query` | The list route (replaces the former `GET …/contents`). Body (all opt, `{}` OK): `page`, `page_size` (1–100, def 25), `date_from`/`date_to`, `content_type[]`, `company_id`. |
-| GET    | `…/contents/{id}`  | One content item — returns the bare item (no `data` wrapper)                                                                                                                |
-
-Item shape: `{id, content_type, created_at, data{…}, lead_id, company_id}` — `data` holds the
-normalized content. Posts → `text`, `link`, `posted_at`, `engagement`, `author` (+ `mentions`,
-`images` when present) · `linkedinComment` → also `post_content_id` (fetch the parent post by id) ·
-`linkedinJobPosting` → `title`, `description`, `location`, `linkedin_url`. Absent fields are
-**omitted**, not `null`.
-
-## Content requests
-
-A content request is one processing task — mapping an account (`account_mapping`) or collecting a
-top account's content (`top_account_content`) — advancing through stages. This is the observable
-state machine behind steps 3–4 of the chain; poll it to follow progress.
-
-| Method | Path                      | Notes                                                                                                                                                                                                         |
-| ------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `…/content-requests`      | List. **Default excludes `completed`** — pass `stage=completed` explicitly to see finished work. Filters: `page`/`page_size`, `date_from`/`date_to`, `type`, `stage` (repeatable), `company_id`, `person_id`. |
-| GET    | `…/content-requests/{id}` | One request: `{id, type, stage, created_at, updated_at, company{}, inputs{}}`                                                                                                                                 |
+`/api/v2/partner/…/agents` answers with `Deprecation`, `Sunset: Thu, 01 Apr 2027 00:00:00 GMT` and
+`Link: rel="deprecation"` headers: migrate to
+signal setups.
 
 ## Enums
 
-- **Agent types (creatable, 8)**: `keyword_detection`, `job_posting_keyword_detection`,
-  `job_update`, `customer`, `competitor`, `partner`, `influencer`, `champion`. On a rejected `type`,
-  the 422 message lists the accepted set — it is authoritative. Read-back may also show
-  `job_posting`, `competitor_activity`, `content_engagement`, `influencer_engagement`,
-  `champion_tracking`.
-- **content_type (query filter)**: `linkedinPost`, `linkedinCompanyPost`, `linkedinJobPosting`,
-  `linkedinComment`. Job posts = `linkedinJobPosting` (`jobPosting` is rejected with a 400 listing
-  the accepted values).
-- **Watchlist type → kind**: `competitor` | `partner` | `customer` → `company` · `influencer` |
-  `champion` → `profile`.
-- **Content-request stages** — terminal success `completed`. Account mapping:
-  `account_mapping_ready`, `account_mapping_in_progress`, `account_mapping_ingestion_ready`,
-  `account_mapping_ingestion_in_progress`, `account_mapping_failed`. Top-account content:
-  `top_account_content_scraping_ready`, `top_account_content_scraping_starting`,
-  `top_account_content_scraping_in_progress`, `top_account_content_ingestion_in_progress`,
-  `top_account_content_failed`.
-- **headcount**: `1-10`, `11-50`, `51-200`, `201-500`, `501-1,000`, `1,001-5,000`, `5,001-10,000`,
-  `10,001+` (mind the commas).
-- **seniority**: `owner`, `founder`, `c_suite`, `partner`, `vp`, `head`, `director`, `manager`,
+- **List type → kind**: `competitor` | `partner` | `customer` | `prospect` → `company` ·
+  `influencer` | `champion` | `employee` → `profile`.
+- **Signal setup `status`**: `enabled`, `disabled`. **`schedule`**: `"weekly"` or `null`.
+- **Template `status`**: `live`, `coming_soon`. **`scopes`**: `discovery`, `account_monitoring`.
+- **Run / content-request `status`**: `pending`, `in_progress`, `completed`, `failed`.
+- **Account monitoring `status`**: `monitored`, `not_covered`, `monitored_elsewhere`, `not_monitored`.
+- **`signal_buckets`**: `["essential"]` or `null`.
+- **headcounts**: `1-10`, `11-50`, `51-200`, `201-500`, `501-1,000`, `1,001-5,000`,
+  `5,001-10,000`, `10,001+` (mind the commas).
+- **seniorities**: `owner`, `founder`, `c_suite`, `partner`, `vp`, `head`, `director`, `manager`,
   `senior`, `entry`, `intern`.
-- **response_format** (watchlists): `concise`, `normalized` (default), `detailed`.
+- On a refused value, the `422` names the field: trust the validator over any doc page.
